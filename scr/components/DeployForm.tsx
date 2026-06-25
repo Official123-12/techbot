@@ -69,7 +69,7 @@ import { useState, useEffect } from "react";
           });
           if (res.success) {
             showToast(isTrial ? "Trial bot deployed!" : "Bot deployed! Building in ~2 minutes...", "success");
-            const appName = res.bot?.herokuAppName || `txhost-${cleaned}`;
+            const appName = res.bot?.herokuAppName || `stanyhost-${cleaned}`;
             setPhoneNumber("");
             setSessionVar("");
             onDeploy(appName);
