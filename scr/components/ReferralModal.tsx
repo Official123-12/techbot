@@ -32,8 +32,8 @@ export function ReferralModal({ isOpen, onClose, referralCode }: ReferralModalPr
 
   const handleShare = async () => {
     const shareData = {
-      title: "Join Toxic Host",
-      text: "Get free TX coins when you sign up for Toxic Host using my referral link!",
+      title: "Join Stany Bot Host",
+      text: "Get free SQ coins when you sign up for Toxic Host using my referral link!",
       url: referralUrl
     };
     if (navigator.share) {
@@ -56,7 +56,7 @@ export function ReferralModal({ isOpen, onClose, referralCode }: ReferralModalPr
         <div className="text-center">
           <p className="font-semibold mb-1">Invite friends, earn TX</p>
           <p className="text-muted-foreground text-sm">
-            Share your link — every friend who signs up gives you <span className="text-purple-400 font-medium">2 TX</span>, and your friend also gets <span className="text-purple-400 font-medium">2 TX</span> as a welcome bonus.
+            Share your link — every friend who signs up gives you <span className="text-purple-400 font-medium">2 SQ</span>, and your friend also gets <span className="text-purple-400 font-medium">2 SQ</span> as a welcome bonus.
           </p>
         </div>
 
