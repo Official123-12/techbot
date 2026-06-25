@@ -496,7 +496,7 @@ import { useState, useRef, useEffect } from "react";
             ) : insufficientBalance ? (
               <><Check className="w-5 h-5 mr-2" />Top Up — Insufficient Balance</>
             ) : (
-              <><Rocket className="w-5 h-5 mr-2" />Deploy Bot — {cost} TX / month</>
+              <><Rocket className="w-5 h-5 mr-2" />Deploy Bot — {cost} SQ / month</>
             )}
           </Button>
         </main>
