@@ -508,7 +508,7 @@ import { useState, useRef, useEffect } from "react";
             </div>
             <div>
               <p className="text-sm text-muted-foreground">
-                You need <span className="font-bold text-foreground">{cost} SQ</span> to deploy this bot, but you only have <span className="font-bold text-red-400">{user.txCoins} TX</span>.
+                You need <span className="font-bold text-foreground">{cost} SQ</span> to deploy this bot, but you only have <span className="font-bold text-red-400">{user.txCoins} SQ</span>.
               </p>
             </div>
             <div className="flex gap-2">
