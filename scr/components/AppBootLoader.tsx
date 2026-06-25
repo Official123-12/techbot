@@ -69,7 +69,7 @@ export function AppBootLoader() {
         <div className="boot-cube" />
         <div className="boot-cube" />
       </div>
-      <span className="boot-label">Toxic Hosting</span>
+      <span className="boot-label">Stany Bot Hosting</span>
     </div>
   );
 }
