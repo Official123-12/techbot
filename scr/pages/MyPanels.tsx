@@ -90,7 +90,7 @@ export function MyPanels() {
 
   const navItems = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "Top Up TX", icon: CreditCard, path: "/topup" },
+    { label: "Top Up SQ", icon: CreditCard, path: "/topup" },
     { label: "Docs", icon: BookOpen, path: "/docs" },
   ];
 
@@ -121,8 +121,8 @@ export function MyPanels() {
       {navOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={() => setNavOpen(false)} />}
       <aside className={`fixed top-0 left-0 h-full w-72 bg-card border-r border-border z-[110] transform transition-transform duration-300 ease-out ${navOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-2.5"><AnimatedLogo /><span className="font-bold text-base">Toxic Host</span></div>
-          <button onClick={() => setNavOpen(false)} className="p-2 rounded-lg hover:bg-muted transition-colors"><X className="w-4 h-4" /></button>
+          <div className="flex items-center gap-2.5"><AnimatedLogo /><span className="font-bold text-base">Stany Host</span></div>
+          <button onClick={() => setNavOpen(false)} className="p-2 rounded-lg hover:bg-muted transition-colors"><S className="w-4 h-4" /></button>
         </div>
         <div className="p-4 flex flex-col h-[calc(100%-65px)] overflow-y-auto">
           {user && (
