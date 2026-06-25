@@ -94,7 +94,7 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
   const storedSessionUrl = (bot as unknown as { sessionIdUrl?: string }).sessionIdUrl || "";
   const isDefaultBot = !templateId;
 
-  const displaySessionUrl = storedSessionUrl || templateSessionUrl || (isDefaultBot ? "https://toxicx.tech/pairing" : "");
+  const displaySessionUrl = storedSessionUrl || templateSessionUrl || (isDefaultBot ? "https://session-id-generator-4xuy.onrender.com/pair" : "");
 
   const handleAction = async (action: string, fn: () => Promise<unknown>) => {
     setLoading(action);
@@ -102,7 +102,7 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
       const res = await fn() as { success?: boolean; error?: string; code?: string };
       if (res && typeof res === "object" && "error" in res && res.error) {
         if (res.code === "INSUFFICIENT_COINS") {
-          showToast("Insufficient TX — redirecting to Top Up", "error");
+          showToast("Insufficient SQ — redirecting to Top Up", "error");
           navigate("/topup");
         } else {
           showToast(res.error, "error");
@@ -172,7 +172,7 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
 
   const handleRenew = async () => {
     if (coinBalance < RENEW_COST) {
-      showToast(`You need ${RENEW_COST} TX to renew for 1 month`, "error");
+      showToast(`You need ${RENEW_COST} SQ to renew for 1 month`, "error");
       navigate("/topup");
       return;
     }
@@ -307,7 +307,7 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
               </Button>
 
               {!bot.isTrial && bot.status === "expired" && (
-                <Button size="sm" variant="outline" onClick={() => setRenewOpen(true)} className="h-8 text-xs bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300" title="Renew an expired bot using TX coins">
+                <Button size="sm" variant="outline" onClick={() => setRenewOpen(true)} className="h-8 text-xs bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300" title="Renew an expired bot using SQ coins">
                   <Timer className="w-3 h-3 mr-1" />
                   Renew Now
                 </Button>
@@ -477,7 +477,7 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Cost</span>
-              <span className="font-semibold">{RENEW_COST} TX</span>
+              <span className="font-semibold">{RENEW_COST} SQ</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Your balance</span>
@@ -486,7 +486,7 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
           </div>
           {!canAffordRenew && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-              Insufficient TX. You need {RENEW_COST} TX but have {coinBalance} TX.
+              Insufficient TX. You need {RENEW_COST} SQ but have {coinBalance} TX.
             </div>
           )}
           <Button
@@ -495,7 +495,7 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
             disabled={!!loading}
           >
             {loading === "Renew" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            {canAffordRenew ? `Renew — ${RENEW_COST} TX` : "Top Up to Renew"}
+            {canAffordRenew ? `Renew — ${RENEW_COST} SQ` : "Top Up to Renew"}
           </Button>
         </div>
       </Modal>
