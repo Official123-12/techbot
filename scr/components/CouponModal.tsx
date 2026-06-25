@@ -135,7 +135,7 @@ export function CouponModal({ isOpen, onClose, onSuccess }: CouponModalProps) {
             <Gift className="w-7 h-7 text-primary" />
           </div>
           <p className="text-muted-foreground text-center text-sm">
-            Enter a coupon code to receive free TX coins
+            Enter a coupon code to receive free SQ coins
           </p>
           <Input
             placeholder="ENTER CODE"
