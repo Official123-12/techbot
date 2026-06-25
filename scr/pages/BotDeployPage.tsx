@@ -228,11 +228,11 @@ import { useState, useRef, useEffect } from "react";
           <div className="p-4 rounded-xl border border-border bg-card text-sm">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Cost</span>
-              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{cost} TX / month</span>
+              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{cost} SQ / month</span>
             </div>
             <div className="flex justify-between items-center mt-1.5">
               <span className="text-muted-foreground">Your balance</span>
-              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{user.txCoins} TX</span>
+              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{user.txCoins} SQ</span>
             </div>
             {insufficientBalance && (
               <p className="text-xs mt-3 text-red-400">
@@ -508,7 +508,7 @@ import { useState, useRef, useEffect } from "react";
             </div>
             <div>
               <p className="text-sm text-muted-foreground">
-                You need <span className="font-bold text-foreground">{cost} TX</span> to deploy this bot, but you only have <span className="font-bold text-red-400">{user.txCoins} TX</span>.
+                You need <span className="font-bold text-foreground">{cost} SQ</span> to deploy this bot, but you only have <span className="font-bold text-red-400">{user.txCoins} TX</span>.
               </p>
             </div>
             <div className="flex gap-2">
