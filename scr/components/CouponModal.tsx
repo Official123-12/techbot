@@ -149,7 +149,7 @@ export function CouponModal({ isOpen, onClose, onSuccess }: CouponModalProps) {
             {loading ? "Claiming..." : "Claim Reward"}
           </Button>
           <a
-            href="https://whatsapp.com/channel/0029Vb7dL1LHltY3pgCvwR3B"
+            href="https://whatsapp.com/channel/0029Vb7fzu4EwEjmsD4Tzs1p"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-sm text-green-400 hover:text-green-300 transition-colors"
