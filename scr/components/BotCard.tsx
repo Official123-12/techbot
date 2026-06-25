@@ -481,12 +481,12 @@ export function BotCard({ bot, onUpdate, deploying = false, coinBalance = 0 }: B
             </div>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Your balance</span>
-              <span className={`font-semibold ${canAffordRenew ? "text-purple-400" : "text-red-400"}`}>{coinBalance} TX</span>
+              <span className={`font-semibold ${canAffordRenew ? "text-purple-400" : "text-red-400"}`}>{coinBalance} SQ</span>
             </div>
           </div>
           {!canAffordRenew && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-              Insufficient TX. You need {RENEW_COST} SQ but have {coinBalance} TX.
+              Insufficient SQ. You need {RENEW_COST} SQ but have {coinBalance} SQ.
             </div>
           )}
           <Button
