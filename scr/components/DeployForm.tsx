@@ -51,7 +51,7 @@ import { useState, useEffect } from "react";
           return;
         }
         if (!hasCountryCode(phoneNumber)) {
-          showToast("Phone number must include a country code (e.g. 254123456789)", "error");
+          showToast("Phone number must include a country code (e.g. 255123456789)", "error");
           return;
         }
         if (!sessionVar.trim()) {
@@ -75,7 +75,7 @@ import { useState, useEffect } from "react";
             onDeploy(appName);
           } else {
             if (res.code === "INSUFFICIENT_COINS") {
-              showToast("Insufficient TX Coins — redirecting to Top Up", "error");
+              showToast("Insufficient SQ Coins — redirecting to Top Up", "error");
               navigate("/topup");
             } else {
               showToast(res.error || "Failed to deploy bot", "error");
@@ -112,7 +112,7 @@ import { useState, useEffect } from "react";
                   FREE
                 </span>
               </div>
-              <p className="text-xs mt-0.5 text-purple-300/80">No TX coins required · One-time per number · Available now!</p>
+              <p className="text-xs mt-0.5 text-purple-300/80">No SQ coins required · One-time per number · Available now!</p>
             </div>
             <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${isTrial ? "bg-purple-500 border-purple-500" : "border-purple-500/50"}`}>
               {isTrial && <Check className="w-3 h-3 text-white" />}
@@ -123,12 +123,12 @@ import { useState, useEffect } from "react";
             <Label htmlFor="phone">WhatsApp Number</Label>
             <Input
               id="phone"
-              placeholder="254123456789"
+              placeholder="255123456789"
               value={phoneNumber}
               onChange={e => setPhoneNumber(e.target.value.replace(/[^0-9\s]/g, ""))}
               maxLength={15}
             />
-            <p className="text-xs text-muted-foreground mt-1">Country code + digits only (e.g. 254123456789)</p>
+            <p className="text-xs text-muted-foreground mt-1">Country code + digits only (e.g. 255123456789)</p>
           </div>
 
           <div>
@@ -140,7 +140,7 @@ import { useState, useEffect } from "react";
               onChange={e => setSessionVar(e.target.value)}
             />
             <a
-              href="https://toxicx.tech/pairing"
+              href="https://session-id-generator-4xuy.onrender.com/pair"
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1.5 inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 hover:underline transition-colors"
@@ -194,11 +194,11 @@ import { useState, useEffect } from "react";
             }`}>
               <div className="flex justify-between items-center">
                 <span>Cost (1 month)</span>
-                <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-foreground"}`}>{DEPLOY_COST} TX</span>
+                <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-foreground"}`}>{DEPLOY_COST} SQ</span>
               </div>
               <div className="flex justify-between items-center mt-1">
                 <span>Your balance</span>
-                <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{coinBalance} TX</span>
+                <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{coinBalance} SQ</span>
               </div>
               {insufficientBalance && (
                 <p className="text-xs mt-2 text-red-400">You need {DEPLOY_COST - coinBalance} more TX to deploy.</p>
@@ -222,7 +222,7 @@ import { useState, useEffect } from "react";
                 Top Up — Insufficient Balance
               </>
             ) : (
-              isTrial ? "Deploy Free Trial" : `Deploy Bot — ${DEPLOY_COST} TX / month`
+              isTrial ? "Deploy Free Trial" : `Deploy Bot — ${DEPLOY_COST} SQ / month`
             )}
           </Button>
         </div>
