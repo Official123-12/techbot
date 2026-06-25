@@ -103,7 +103,7 @@ export function Admin() {
   const [newTemplate, setNewTemplate] = useState({ name: "", githubRepo: "", sessionIdUrl: "", costTx: "10" });
   const [addingTemplate, setAddingTemplate] = useState(false);
   const [deleteTemplateModal, setDeleteTemplateModal] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
-  const [newPlan, setNewPlan] = useState({ name: "", description: "", txCost: "20", ram: "512MB", disk: "2GB", cpu: "1", isBestDeal: false });
+  const [newPlan, setNewPlan] = useState({ name: "", description: "", sqCost: "20", ram: "512MB", disk: "2GB", cpu: "1", isBestDeal: false });
   const [addingPlan, setAddingPlan] = useState(false);
   const [deletePlanModal, setDeletePlanModal] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
     const [purgeModal, setPurgeModal] = useState<{ open: boolean; collection: string; label: string }>({ open: false, collection: "", label: "" });
@@ -332,7 +332,7 @@ export function Admin() {
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-1.5 text-amber-400 text-sm font-mono">
-              <span className="hidden sm:inline">@xhclinton</span>
+              <span className="hidden sm:inline">@stanytz</span>
               <Crown className="w-3.5 h-3.5" />
             </div>
           </div>
