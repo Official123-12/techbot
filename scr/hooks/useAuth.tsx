@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isAdmin = user?.email === "xhclinton@gmail.com";
+  const isAdmin = user?.email === "stanytz378@gmail.com";
 
   const refreshUser = useCallback(async () => {
     try {
