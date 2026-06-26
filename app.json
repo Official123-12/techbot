@@ -23,10 +23,12 @@
     },
     "TIGERPAY_PUBLIC_KEY": {
       "description": "TigerPayPro public API key for payment processing",
+      "value": "pk_c225586d7665475eb907a4d3",
       "required": true
     },
     "TIGERPAY_SECRET_KEY": {
       "description": "TigerPayPro secret API key",
+      "value": "sk_b4564add07846f849655064caaff908830fb26dc",
       "required": true
     },
     "TIGERPAY_API_URL": {
@@ -115,11 +117,5 @@
       "quantity": 1,
       "size": "basic"
     }
-  },
-  "addons": [
-    {
-      "plan": "mongodb:atlas",
-      "as": "MONGODB"
-    }
-  ]
+  }
 }
