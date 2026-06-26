@@ -30,7 +30,6 @@ const NETWORKS: { key: Network; label: string; color: string; prefix: string }[]
   { key: "halotel", label: "Halotel", color: "text-yellow-400", prefix: "255" },
 ];
 
-// ===== FIXED: user parameter imeondolewa =====
 function NetworkLogo({ network }: { network: Network }) {
   const icons: Record<Network, string> = {
     vodacom: "V",
@@ -465,7 +464,7 @@ export default function TopUp() {
             }`}
           >
             <Phone className="w-4 h-4" />
-            <span className="text-sm font-medium">Tanzania</span>
+            <span className="text-sm font-medium">🇹🇿 Tanzania</span>
           </button>
           <button
             onClick={() => setPaymentType("international")}
@@ -476,7 +475,7 @@ export default function TopUp() {
             }`}
           >
             <Globe className="w-4 h-4" />
-            <span className="text-sm font-medium">International</span>
+            <span className="text-sm font-medium">🌍 International</span>
           </button>
         </div>
 
