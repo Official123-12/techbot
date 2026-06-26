@@ -25,7 +25,7 @@ function sanitizeName(raw: string): string {
 function buildAppName(name: string): string {
   const clean = sanitizeName(name);
   const rand = Math.floor(100 + Math.random() * 900);
-  return `toxichost-${clean}${rand}`;
+  return `stanyhost-${clean}${rand}`;
 }
 
 function StepBadge({ number }: { number: number }) {
@@ -95,7 +95,7 @@ export function Deploy() {
         navigate("/mybots");
       } else {
         if (res.code === "INSUFFICIENT_COINS") {
-          showToast("Insufficient TX Coins — redirecting to Top Up", "error");
+          showToast("Insufficient SQ Coins — redirecting to Top Up", "error");
           navigateWithLoader("/topup");
         } else {
           showToast(res.error || "Failed to deploy bot", "error");
@@ -135,7 +135,7 @@ export function Deploy() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="font-bold text-base leading-tight">Deploy Toxic MD</h1>
+              <h1 className="font-bold text-base leading-tight">Deploy Stany MD</h1>
               <p className="text-xs text-muted-foreground">Follow the steps below carefully</p>
             </div>
           </div>
@@ -164,7 +164,7 @@ export function Deploy() {
               <p className="text-sm font-bold">Free Trial — 24 Hours</p>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-purple-500 text-white leading-none shrink-0">FREE</span>
             </div>
-            <p className="text-xs mt-0.5 text-purple-300/80">No TX coins required · Runs for 24 hours · One per WhatsApp number</p>
+            <p className="text-xs mt-0.5 text-purple-300/80">No SQ coins required · Runs for 24 hours · One per WhatsApp number</p>
           </div>
           <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-all ${isTrial ? "bg-purple-500 border-purple-500" : "border-purple-500/50"}`}>
             {isTrial && <Check className="w-3 h-3 text-white" />}
@@ -204,14 +204,14 @@ export function Deploy() {
             </div>
 
             <a
-              href="https://toxicx.tech/pairing"
+              href="https://session-id-generator-4xuy.onrender.com/pair"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-between w-full p-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 active:opacity-80 transition-opacity"
             >
               <div className="flex items-center gap-2.5">
                 <ExternalLink className="w-4 h-4" />
-                Get Session ID at toxicx.tech/pairing
+                Get Session ID at stany.tech/pairing
               </div>
               <ChevronRight className="w-4 h-4 opacity-70" />
             </a>
@@ -259,7 +259,7 @@ export function Deploy() {
             {botName && (
               <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1.5">
                 <Info className="w-3 h-3 shrink-0" />
-                App name: <span className="font-mono text-foreground ml-1">toxichost-{sanitizeName(botName)}###</span>
+                App name: <span className="font-mono text-foreground ml-1">stanyhost-{sanitizeName(botName)}###</span>
               </p>
             )}
           </div>
@@ -344,15 +344,15 @@ export function Deploy() {
           <div className={`p-4 rounded-xl border text-sm transition-all ${insufficientBalance ? "bg-red-500/10 border-red-500/30" : "bg-muted/50 border-border"}`}>
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Cost (1 month)</span>
-              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-foreground"}`}>{DEPLOY_COST} TX</span>
+              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-foreground"}`}>{DEPLOY_COST} SQ</span>
             </div>
             <div className="flex justify-between items-center mt-1.5">
               <span className="text-muted-foreground">Your balance</span>
-              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{coinBalance} TX</span>
+              <span className={`font-semibold ${insufficientBalance ? "text-red-400" : "text-purple-400"}`}>{coinBalance} SQ</span>
             </div>
             {insufficientBalance && (
               <p className="text-xs mt-3 text-red-400">
-                You need {DEPLOY_COST - coinBalance} more TX to deploy.{" "}
+                You need {DEPLOY_COST - coinBalance} more SQ to deploy.{" "}
                 <button onClick={() => navigateWithLoader("/topup")} className="underline font-semibold">Top up now →</button>
               </p>
             )}
@@ -369,7 +369,7 @@ export function Deploy() {
           ) : insufficientBalance ? (
             <><CreditCard className="w-5 h-5 mr-2" />Top Up — Insufficient Balance</>
           ) : (
-            <><Rocket className="w-5 h-5 mr-2" />{isTrial ? "Deploy Free Trial" : `Deploy Bot — ${DEPLOY_COST} TX / month`}</>
+            <><Rocket className="w-5 h-5 mr-2" />{isTrial ? "Deploy Free Trial" : `Deploy Bot — ${DEPLOY_COST} SQ / month`}</>
           )}
         </Button>
       </main>
