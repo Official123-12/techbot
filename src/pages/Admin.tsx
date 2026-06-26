@@ -388,7 +388,7 @@ export function Admin() {
 
         <div className="p-3 border-t border-border shrink-0">
           <div className="px-3 py-2 text-xs text-muted-foreground">
-            Logged in as <span className="text-amber-400 font-mono">@xhclinton</span>
+            Logged in as <span className="text-amber-400 font-mono">@stanytz</span>
           </div>
         </div>
       </aside>
@@ -509,7 +509,7 @@ export function Admin() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-medium text-sm">{u.username ? `@${u.username}` : "No username"}</span>
-                            {u.email === "xhclinton@gmail.com" && <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                            {u.email === "stanytz@gmail.com" && <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
                             {u.isBanned && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-400/10 text-red-400">Banned</span>
                             )}
@@ -1404,7 +1404,7 @@ export function Admin() {
 
             {!banModalOpen && !txModalOpen && !subtractTxModalOpen && !pwModalOpen && !deleteUserModalOpen && (
               <div className="grid grid-cols-2 gap-2">
-                {selectedUser.email !== "xhclinton@gmail.com" && (
+                {selectedUser.email !== "stanytz@gmail.com" && (
                   selectedUser.isBanned ? (
                     <Button
                       variant="outline"
@@ -1431,7 +1431,7 @@ export function Admin() {
                 <Button variant="outline" size="sm" onClick={() => setPwModalOpen(true)}>
                   <RefreshCw className="w-3.5 h-3.5 mr-1" />Reset PW
                 </Button>
-                {selectedUser.email !== "xhclinton@gmail.com" && (
+                {selectedUser.email !== "stanytz@gmail.com" && (
                   <Button
                     variant="outline"
                     size="sm"
