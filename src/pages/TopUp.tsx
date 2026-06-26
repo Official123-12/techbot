@@ -347,7 +347,7 @@ function MinPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
           </div>
 
           <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
-            <p className="text-sm font-medium text-blue-300 mb-2">📸 How to pay:</p>
+            <p className="text-sm font-medium text-blue-300 mb-2">How to pay:</p>
             <ol className="text-xs text-blue-200/80 space-y-2">
               <li className="flex items-start gap-2">
                 <span className="font-bold">1.</span>
@@ -454,7 +454,6 @@ export default function TopUp() {
           )}
         </div>
 
-        {/* Payment Type Selector */}
         <div className="flex gap-2 mb-6">
           <button
             onClick={() => setPaymentType("local")}
@@ -465,7 +464,7 @@ export default function TopUp() {
             }`}
           >
             <Phone className="w-4 h-4" />
-            <span className="text-sm font-medium">🇹🇿 Tanzania</span>
+            <span className="text-sm font-medium">Tanzania</span>
           </button>
           <button
             onClick={() => setPaymentType("international")}
@@ -476,7 +475,7 @@ export default function TopUp() {
             }`}
           >
             <Globe className="w-4 h-4" />
-            <span className="text-sm font-medium">🌍 International</span>
+            <span className="text-sm font-medium">International</span>
           </button>
         </div>
 
@@ -534,9 +533,7 @@ export default function TopUp() {
                   <p className="text-sm text-muted-foreground">Choose exactly how many SQ you need</p>
                 </div>
                 <button 
-                  onClick={() => {
-                    // Handle custom amount
-                  }}
+                  onClick={() => {}}
                   className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium transition-colors border border-border"
                 >
                   Custom
