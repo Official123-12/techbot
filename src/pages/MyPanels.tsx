@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { getAdminPanels } from "@/lib/api";
 import { PageLoader } from "@/components/PageLoader";
-import { Server, ArrowLeft, ExternalLink, Calendar, User, Coins } from "lucide-react";
+import { Server, ArrowLeft, ExternalLink, Calendar, User, RefreshCw } from "lucide-react";
 
 interface Panel {
   _id: string;
@@ -24,7 +24,7 @@ function formatDate(d: string): string {
 }
 
 export function MyPanels() {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [panels, setPanels] = useState<Panel[]>([]);
