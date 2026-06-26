@@ -1,24 +1,58 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import axios from "axios";
-import mongoose from "mongoose";
 import { Package } from "../models/Package.js";
 import { Transaction } from "../models/Transaction.js";
 import { User } from "../models/User.js";
 import { authGuard, type AuthRequest } from "../middleware/auth.js";
 import { banCheck } from "../middleware/banCheck.js";
 import { paymentRateLimit } from "../middleware/rateLimit.js";
+import {
+  verifyWebhookSignature,
+  verifyTransaction,
+  initializeTransaction,
+  chargeMobileMoney,
+  getChargeStatus,
+  normalizePhone,
+  PAYSTACK_PUBLIC_KEY,
+} from "../services/paystack.js";
 import { notifyOwner } from "../services/notify.js";
+import { tigerpay } from "../services/tigerpay.js";
+import { minpay } from "../services/minpay.js";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 const router = Router();
 const MAX_DAILY_FAILURES = 7;
 
-// ===== TIGERPAY CONFIG =====
-const TIGERPAY_API = process.env.TIGERPAY_API_URL || 'https://www.tigerpaypro.com/api/v1';
-const TIGERPAY_PUBLIC_KEY = process.env.TIGERPAY_PUBLIC_KEY || '';
-const ADMIN_PHONE = process.env.ADMIN_PHONE || '255787069580';
-const ADMIN_NAME = process.env.ADMIN_NAME || 'Stanley';
-const TX_RATE_TSh = 50;
+// Multer setup for screenshot uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), "uploads", "screenshots");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const unique = `${Date.now()}_${Math.round(Math.random() * 1e9)}`;
+    cb(null, `minpay_${unique}${path.extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|gif|webp/;
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.test(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only images are allowed"));
+    }
+  }
+});
 
 function getParam(val: string | string[]): string {
   return Array.isArray(val) ? (val[0] ?? "") : val;
@@ -47,545 +81,669 @@ async function recordPaymentFailure(userId: string): Promise<void> {
   }
 }
 
-async function notifyAdmin(data: any) {
+// ============================================
+// WEBHOOK HANDLER (TigerPay + MINPAY)
+// ============================================
+export async function paystackWebhookHandler(req: Request, res: Response): Promise<void> {
   try {
-    if (process.env.BOT_TOKEN && process.env.BOT_OWNER_ID) {
-      const message = `
-🔔 *${data.title || 'New Min Pay Request'}*
-
-User: @${data.username || 'N/A'}
-Email: ${data.email || 'N/A'}
-Amount: ${data.ksAmount || 0} TSh
-SQ Coins: ${data.txAmount || 0} SQ
-
-Send payment to:
-${data.adminName || ADMIN_NAME} - ${data.adminPhone || ADMIN_PHONE}
-
-After payment, take screenshot and confirm.
-      `;
-      
-      await axios.post(
-        `https://api.telegram.org/bot${process.env.BOT_TOKEN}/sendMessage`,
-        {
-          chat_id: process.env.BOT_OWNER_ID,
-          text: message,
-          parse_mode: 'Markdown'
-        }
-      );
+    const signature = Array.isArray(req.headers["x-paystack-signature"])
+      ? req.headers["x-paystack-signature"][0]
+      : req.headers["x-paystack-signature"] || "";
+    
+    // TigerPay Webhook
+    if (req.body.provider === "tigerpay") {
+      const result = await tigerpay.handleWebhook(req.body);
+      if (result) {
+        res.json({ received: true });
+        return;
+      }
     }
-  } catch (error) {
-    console.error('Admin notification failed:', error);
+
+    // MINPAY Webhook (International)
+    if (req.body.provider === "minpay") {
+      const result = await minpay.handleWebhook(req.body);
+      if (result) {
+        res.json({ received: true });
+        return;
+      }
+    }
+
+    // Fallback: Paystack webhook (for backward compatibility)
+    if (!signature) { 
+      res.status(400).json({ error: "Missing signature" }); 
+      return; 
+    }
+    const body = JSON.stringify(req.body);
+    if (!verifyWebhookSignature(body, signature)) { 
+      res.status(400).json({ error: "Invalid signature" }); 
+      return; 
+    }
+    const event = req.body;
+    if (event.event === "charge.success") {
+      const reference = event.data.reference as string;
+      const tx = await Transaction.findOne({ paystackRef: reference });
+      if (tx && tx.status === "pending") {
+        tx.status = "success";
+        await tx.save();
+        const user = await User.findById(tx.userId);
+        if (user) {
+          user.txCoins += tx.txAmount;
+          await user.save();
+          await notifyOwner(`💰 *Payment Confirmed (Webhook)*\n\nUser: \`${user.email}\`\nAmount: ${tx.txAmount} SQ (TSh ${tx.ksAmount})\nRef: \`${reference}\``).catch(() => {});
+        }
+      }
+    }
+    res.json({ received: true });
+  } catch {
+    res.status(500).json({ error: "Server error" });
   }
 }
 
-// ===== GET PACKAGES =====
+// ============================================
+// CONFIG
+// ============================================
+router.get("/config", (_req, res) => {
+  res.json({ 
+    paystackPublicKey: PAYSTACK_PUBLIC_KEY,
+    currency: "TSh",
+    currencyCode: "TZS"
+  });
+});
+
 router.get("/packages", async (_req, res) => {
   try {
     const packages = await Package.find({ active: true }).sort({ order: 1 }).lean();
-    res.json(packages);
+    // Convert prices to TSH
+    const formatted = packages.map(p => ({
+      ...p,
+      price: (p as any).txAmount * 1000, // Convert to TSH
+      currency: "TSh"
+    }));
+    res.json(formatted);
   } catch {
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// ===== TIGERPAY PAYMENT (TANZANIA - AUTOMATIC) =====
+// ============================================
+// TIGERPAY (LOCAL PAYMENTS - AUTOPAY)
+// ============================================
 router.post("/tigerpay/initiate", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
   try {
-    const schema = z.object({
-      amount: z.number().min(1),
-      phone: z.string().min(9),
-      network: z.enum(["vodacom", "airtel", "tigo", "halotel"]),
+    const schema = z.object({ 
       packageId: z.string().optional(),
-      isCustom: z.boolean().optional(),
-      txAmount: z.number().optional()
+      txAmount: z.number().min(1).optional()
     });
     const parsed = schema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid input", details: parsed.error });
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
+    }
+
+    const user = await User.findById(req.user!._id);
+    if (!user) { 
+      res.status(404).json({ error: "User not found" }); 
+      return; 
+    }
+
+    let txAmount = parsed.data.txAmount || 0;
+    let ksAmount = 0;
+
+    if (parsed.data.packageId) {
+      const pkg = await Package.findById(parsed.data.packageId);
+      if (!pkg) { 
+        res.status(404).json({ error: "Package not found" }); 
+        return; 
+      }
+      txAmount = (pkg as any).txAmount || 0;
+      ksAmount = txAmount * 1000; // TSH conversion
+    } else {
+      // Custom amount
+      ksAmount = txAmount * 1000;
+    }
+
+    if (txAmount < 1) {
+      res.status(400).json({ error: "Minimum amount is 1 SQ" });
       return;
     }
 
-    const { amount, phone, network, packageId, isCustom, txAmount } = parsed.data;
-    const user = await User.findById(req.user!._id);
-    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    const reference = `SQ_${Date.now()}_${user._id.toString().slice(-6)}`;
 
-    const finalTxAmount = isCustom ? (txAmount || 0) : 0;
-    const finalPackageId = packageId || null;
-
-    const reference = `TXP_${Date.now()}_${user._id.toString().slice(-6)}`;
-    const transaction = await Transaction.create({
-      userId: user._id,
-      type: "topup",
-      txAmount: finalTxAmount,
-      ksAmount: amount,
-      status: "pending",
-      paymentMethod: network,
-      paymentType: "local",
-      packageId: finalPackageId,
-      paystackRef: reference,
-      tigerpayRef: reference
+    // Initialize TigerPay
+    const result = await tigerpay.initializePayment({
+      amount: ksAmount,
+      email: user.email,
+      phone: user.phone || "",
+      name: user.name || user.email,
+      reference
     });
 
-    try {
-      const response = await axios.post(
-        `${TIGERPAY_API}/create_order.php`,
-        {
-          amount: amount,
-          buyer_phone: phone,
-          buyer_name: user.username || 'Customer',
-          buyer_email: user.email || 'customer@email.com'
-        },
-        {
-          headers: {
-            'X-API-KEY': TIGERPAY_PUBLIC_KEY,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000
-        }
-      );
-
-      const data = response.data;
-
-      if (data.status === 'success') {
-        await Transaction.findByIdAndUpdate(transaction._id, {
-          orderId: data.order_id,
-          tigerpayRef: data.reference || reference,
-          updatedAt: new Date()
-        });
-
-        res.json({
-          success: true,
-          reference: data.reference || reference,
-          orderId: data.order_id,
-          message: data.message || `Check your ${network} phone for the payment prompt.`
-        });
-      } else {
-        await Transaction.findByIdAndUpdate(transaction._id, {
-          status: "failed",
-          error: data.message || "TigerPay initiation failed"
-        });
-        await recordPaymentFailure(user._id.toString());
-        res.status(400).json({ error: data.message || "Failed to initiate payment" });
-      }
-    } catch (apiError) {
-      console.error("TigerPay API Error:", apiError);
-      await Transaction.findByIdAndUpdate(transaction._id, {
-        status: "failed",
-        error: "TigerPay API error"
-      });
-      await recordPaymentFailure(user._id.toString());
-      res.status(500).json({ error: "Payment gateway error" });
-    }
-  } catch (error) {
-    console.error("TigerPay Initiate Error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ===== TIGERPAY - CHECK STATUS =====
-router.get("/tigerpay/status/:reference", authGuard, banCheck, async (req: AuthRequest, res) => {
-  try {
-    const reference = getParam(req.params.reference);
-    
-    const transaction = await Transaction.findOne({ 
-      tigerpayRef: reference,
-      userId: req.user!._id
-    });
-
-    if (!transaction) {
-      return res.status(404).json({ error: "Transaction not found" });
-    }
-
-    if (transaction.status === "success") {
-      return res.json({ status: "success", txAmount: transaction.txAmount });
-    }
-
-    if (transaction.status === "failed") {
-      return res.json({ status: "failed" });
-    }
-
-    if (!transaction.orderId) {
-      return res.json({ status: "pending", message: "No order ID yet" });
-    }
-
-    try {
-      const response = await axios.post(
-        `${TIGERPAY_API}/order_status.php`,
-        { order_id: transaction.orderId },
-        {
-          headers: {
-            'X-API-KEY': TIGERPAY_PUBLIC_KEY,
-            'Content-Type': 'application/json'
-          },
-          timeout: 15000
-        }
-      );
-
-      const data = response.data;
-
-      if (data.payment_status === 'completed') {
-        transaction.status = "success";
-        transaction.paidAt = data.paid_at ? new Date(data.paid_at) : new Date();
-        await transaction.save();
-
-        const user = await User.findById(transaction.userId);
-        if (user) {
-          user.txCoins += transaction.txAmount;
-          await user.save();
-          notifyOwner(`Payment Confirmed (TigerPay)\n\nUser: ${user.email}\nAmount: ${transaction.txAmount} SQ\nRef: ${reference}`).catch(() => {});
-        }
-
-        res.json({
-          status: "success",
-          txAmount: transaction.txAmount,
-          message: "Payment confirmed!"
-        });
-      } else if (data.payment_status === 'failed' || data.payment_status === 'cancelled') {
-        transaction.status = "failed";
-        transaction.error = data.payment_status;
-        await transaction.save();
-        await recordPaymentFailure(transaction.userId.toString());
-        res.json({ status: "failed", message: "Payment failed or cancelled" });
-      } else {
-        res.json({ status: "pending", message: "Payment still pending" });
-      }
-    } catch (apiError) {
-      console.error("TigerPay Status API Error:", apiError);
-      res.json({ status: "pending", message: "Still checking..." });
-    }
-  } catch (error) {
-    console.error("TigerPay Status Error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ===== MIN PAY (INTERNATIONAL - MANUAL) =====
-router.post("/minpay/request", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
-  try {
-    const schema = z.object({
-      packageId: z.string().optional(),
-      txAmount: z.number().min(1),
-      ksAmount: z.number().min(1),
-      username: z.string(),
-      email: z.string().email()
-    });
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid input" });
+    if (!result.status) {
+      res.status(500).json({ error: result.message || "Payment initialization failed" });
       return;
     }
 
-    const { packageId, txAmount, ksAmount, username, email } = parsed.data;
-    const user = await User.findById(req.user!._id);
-    if (!user) { res.status(404).json({ error: "User not found" }); return; }
-
-    // Create min pay request using Mongoose
-    const MinPayRequest = mongoose.model('MinPayRequest', new mongoose.Schema({
-      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-      username: { type: String, required: true },
-      email: { type: String, required: true },
-      packageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Package' },
-      txAmount: { type: Number, required: true },
-      ksAmount: { type: Number, required: true },
-      status: { type: String, enum: ['pending', 'confirmed', 'rejected'], default: 'pending' },
-      adminPhone: { type: String, required: true },
-      adminName: { type: String, required: true },
-      error: { type: String },
-      confirmedAt: { type: Date },
-      confirmedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-      createdAt: { type: Date, default: Date.now },
-      updatedAt: { type: Date, default: Date.now }
-    }));
-
-    const minPayRequest = await MinPayRequest.create({
-      userId: user._id,
-      username: username || user.username,
-      email: email || user.email,
-      packageId: packageId || null,
-      txAmount,
-      ksAmount,
-      status: "pending",
-      adminPhone: ADMIN_PHONE,
-      adminName: ADMIN_NAME
-    });
-
-    const requestId = minPayRequest._id.toString();
-
-    const reference = `MIN_${Date.now()}_${user._id.toString().slice(-6)}`;
+    // Create transaction
     await Transaction.create({
       userId: user._id,
       type: "topup",
       txAmount,
       ksAmount,
-      status: "pending",
-      paymentMethod: "minpay",
-      paymentType: "international",
-      packageId: packageId || null,
       paystackRef: reference,
-      minPayRequestId: requestId,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      status: "pending",
+      provider: "tigerpay"
     });
 
-    await notifyAdmin({
-      title: 'New Min Pay Request (International)',
-      username: username || user.username,
-      email: email || user.email,
-      ksAmount,
+    res.json({ 
+      authorizationUrl: result.data?.paymentUrl,
+      reference,
+      amount: ksAmount,
+      currency: "TSh"
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Payment initiation failed";
+    res.status(500).json({ error: message });
+  }
+});
+
+// ============================================
+// MINPAY (INTERNATIONAL PAYMENTS)
+// ============================================
+router.post("/minpay/initiate", authGuard, banCheck, async (req: AuthRequest, res) => {
+  try {
+    const schema = z.object({ 
+      txAmount: z.number().min(1)
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
+    }
+
+    const user = await User.findById(req.user!._id);
+    if (!user) { 
+      res.status(404).json({ error: "User not found" }); 
+      return; 
+    }
+
+    const txAmount = parsed.data.txAmount;
+    const ksAmount = txAmount * 1000; // TSH conversion
+
+    // Create MINPAY transaction
+    const reference = `MINPAY_${Date.now()}_${user._id.toString().slice(-6)}`;
+
+    await Transaction.create({
+      userId: user._id,
+      type: "topup",
       txAmount,
-      adminPhone: ADMIN_PHONE,
-      adminName: ADMIN_NAME
+      ksAmount,
+      paystackRef: reference,
+      status: "pending",
+      provider: "minpay"
     });
 
-    res.json({
-      success: true,
-      requestId,
-      message: "Request submitted. Admin will confirm shortly.",
-      adminPhone: ADMIN_PHONE,
-      adminName: ADMIN_NAME
+    res.json({ 
+      reference,
+      minpayNumber: "255787069580",
+      minpayName: "Masanyiwa Stanley",
+      instructions: {
+        step1: "Send the exact amount to MINPAY number: 255787069580",
+        step2: "Name: Masanyiwa Stanley",
+        step3: `Amount: TSh ${ksAmount.toLocaleString()}`,
+        step4: "Upload screenshot of payment confirmation below"
+      },
+      amount: ksAmount,
+      currency: "TSh"
     });
-  } catch (error) {
-    console.error("MinPay Request Error:", error);
-    res.status(500).json({ error: "Server error" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to initiate MINPAY";
+    res.status(500).json({ error: message });
   }
 });
 
-// ===== MIN PAY - ADMIN CONFIRM =====
-router.post("/minpay/confirm/:requestId", authGuard, banCheck, async (req: AuthRequest, res) => {
+// ============================================
+// MINPAY - UPLOAD SCREENSHOT
+// ============================================
+router.post("/minpay/upload", authGuard, banCheck, upload.single("screenshot"), async (req: AuthRequest, res) => {
   try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).json({ error: "Unauthorized" });
+    const schema = z.object({ 
+      reference: z.string(),
+      amount: z.number()
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
     }
 
-    const { requestId } = req.params;
-    
-    const MinPayRequest = mongoose.model('MinPayRequest');
-    const request = await MinPayRequest.findById(requestId);
-
-    if (!request) {
-      return res.status(404).json({ error: "Request not found" });
+    if (!req.file) {
+      res.status(400).json({ error: "Screenshot is required" });
+      return;
     }
 
-    if (request.status !== "pending") {
-      return res.status(400).json({ error: "Request already processed" });
+    const { reference, amount } = parsed.data;
+    const user = await User.findById(req.user!._id);
+    if (!user) { 
+      res.status(404).json({ error: "User not found" }); 
+      return; 
     }
 
-    request.status = "confirmed";
-    request.confirmedAt = new Date();
-    request.confirmedBy = req.user?._id;
-    await request.save();
+    const tx = await Transaction.findOne({ paystackRef: reference, userId: user._id });
+    if (!tx) {
+      res.status(404).json({ error: "Transaction not found" });
+      return;
+    }
 
-    const transaction = await Transaction.findOne({ minPayRequestId: requestId });
-    if (transaction) {
-      transaction.status = "success";
-      transaction.paidAt = new Date();
-      await transaction.save();
+    if (tx.status === "success") {
+      res.status(400).json({ error: "Transaction already completed" });
+      return;
+    }
 
-      const user = await User.findById(request.userId);
+    // Save screenshot path
+    tx.metadata = {
+      ...tx.metadata,
+      screenshot: req.file.path,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: user.email
+    };
+    await tx.save();
+
+    // Send notification to owner via WhatsApp/Bot
+    const message = `📸 *MINPAY Payment Screenshot Uploaded*\n\n` +
+      `👤 User: ${user.email}\n` +
+      `💰 Amount: TSh ${amount.toLocaleString()}\n` +
+      `📱 Phone: ${user.phone || "N/A"}\n` +
+      `🆔 Ref: ${reference}\n` +
+      `📅 Time: ${new Date().toLocaleString()}\n\n` +
+      `⚠️ Verify payment and confirm manually!`;
+
+    await notifyOwner(message);
+
+    // Send WhatsApp notification
+    await minpay.sendWhatsAppNotification({
+      message,
+      phone: "255787069580" // Owner's number
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Screenshot uploaded successfully. Waiting for admin verification.",
+      reference
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Upload failed";
+    res.status(500).json({ error: message });
+  }
+});
+
+// ============================================
+// MINPAY - ADMIN VERIFY PAYMENT
+// ============================================
+router.post("/minpay/verify", authGuard, banCheck, async (req: AuthRequest, res) => {
+  try {
+    const schema = z.object({ 
+      reference: z.string(),
+      status: z.enum(["success", "failed"])
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
+    }
+
+    // Check if user is admin
+    const user = await User.findById(req.user!._id);
+    if (!user || !user.isAdmin) {
+      res.status(403).json({ error: "Admin access required" });
+      return;
+    }
+
+    const { reference, status } = parsed.data;
+    const tx = await Transaction.findOne({ paystackRef: reference });
+    if (!tx) {
+      res.status(404).json({ error: "Transaction not found" });
+      return;
+    }
+
+    if (status === "success") {
+      tx.status = "success";
+      await tx.save();
+      
+      const user = await User.findById(tx.userId);
       if (user) {
-        user.txCoins += request.txAmount;
+        user.txCoins += tx.txAmount;
         await user.save();
-        notifyOwner(`Payment Confirmed (Min Pay)\n\nUser: ${user.email}\nAmount: ${request.txAmount} SQ\nMethod: International`).catch(() => {});
+
+        // Notify user
+        await notifyOwner(`✅ *MINPAY Payment Verified*\n\nUser: ${user.email}\nAmount: ${tx.txAmount} SQ (TSh ${tx.ksAmount})\nRef: ${reference}`);
+        
+        // Send WhatsApp to user
+        await minpay.sendWhatsAppNotification({
+          message: `✅ Your payment of TSh ${tx.ksAmount.toLocaleString()} has been verified!\nYou have received ${tx.txAmount} SQ coins.`,
+          phone: user.phone || "255787069580"
+        });
       }
+    } else {
+      tx.status = "failed";
+      await tx.save();
     }
 
+    res.json({ success: true, status });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Verification failed";
+    res.status(500).json({ error: message });
+  }
+});
+
+// ============================================
+// CHARGE (Mobile Money - Legacy)
+// ============================================
+router.post("/charge", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
+  try {
+    const schema = z.object({
+      packageId: z.string(),
+      phone: z.string().min(9),
+      provider: z.enum(["mpesa", "airtel"])
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
+    }
+    const { packageId, phone, provider } = parsed.data;
+    const pkg = await Package.findById(packageId);
+    if (!pkg) { 
+      res.status(404).json({ error: "Package not found" }); 
+      return; 
+    }
+    const user = await User.findById(req.user!._id);
+    if (!user) { 
+      res.status(404).json({ error: "User not found" }); 
+      return; 
+    }
+    const reference = `TXM_${Date.now()}_${user._id.toString().slice(-6)}`;
+    const paystackProvider: "mpesa" | "atl" = provider === "airtel" ? "atl" : "mpesa";
+    const charge = await chargeMobileMoney({
+      email: user.email,
+      amountKes: (pkg as any).ksPrice * 100,
+      phone: normalizePhone(phone),
+      provider: paystackProvider,
+      reference
+    });
+    await Transaction.create({
+      userId: user._id,
+      type: "topup",
+      txAmount: (pkg as any).txAmount + (pkg as any).bonusTx,
+      ksAmount: (pkg as any).ksPrice,
+      paystackRef: charge.reference,
+      status: "pending"
+    });
     res.json({
-      success: true,
-      message: `Added ${request.txAmount} SQ to user ${request.username}`
+      reference: charge.reference,
+      message: charge.display_text ?? "Check your phone for the payment prompt."
     });
-  } catch (error) {
-    console.error("MinPay Confirm Error:", error);
-    res.status(500).json({ error: "Server error" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Charge failed";
+    res.status(400).json({ error: message });
   }
 });
 
-// ===== MIN PAY - REJECT REQUEST =====
-router.post("/minpay/reject/:requestId", authGuard, banCheck, async (req: AuthRequest, res) => {
+// ============================================
+// CHARGE STATUS
+// ============================================
+router.get("/charge/status/:reference", authGuard, banCheck, async (req: AuthRequest, res) => {
   try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).json({ error: "Unauthorized" });
+    const reference = getParam(req.params.reference);
+    let status: string;
+    try {
+      status = await getChargeStatus(reference);
+    } catch {
+      res.json({ status: "pending" });
+      return;
     }
-
-    const { requestId } = req.params;
-    const { reason } = req.body;
-
-    const MinPayRequest = mongoose.model('MinPayRequest');
-    const request = await MinPayRequest.findById(requestId);
-
-    if (!request) {
-      return res.status(404).json({ error: "Request not found" });
-    }
-
-    request.status = "rejected";
-    request.error = reason || "Payment not confirmed";
-    await request.save();
-
-    await Transaction.findOneAndUpdate(
-      { minPayRequestId: requestId },
-      { 
-        status: "failed",
-        error: reason || "Rejected by admin",
-        updatedAt: new Date()
-      }
-    );
-
-    res.json({
-      success: true,
-      message: "Request rejected"
-    });
-  } catch (error) {
-    console.error("MinPay Reject Error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ===== MIN PAY - GET REQUESTS (Admin) =====
-router.get("/minpay/requests", authGuard, banCheck, async (req: AuthRequest, res) => {
-  try {
-    if (!req.user?.isAdmin) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-
-    const MinPayRequest = mongoose.model('MinPayRequest');
-    const requests = await MinPayRequest.find({})
-      .sort({ createdAt: -1 })
-      .lean();
-
-    res.json(requests);
-  } catch (error) {
-    console.error("MinPay List Error:", error);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ===== WEBHOOK - TigerPayPro Callback =====
-router.post("/webhooks/tigerpay", async (req: Request, res: Response) => {
-  try {
-    const { order_id, reference, status, amount, buyer_phone } = req.body;
-    
-    const transaction = await Transaction.findOne({ 
-      orderId: order_id 
-    });
-
-    if (!transaction) {
-      return res.status(404).json({ error: "Transaction not found" });
-    }
-
-    if (status === "success" || status === "completed") {
-      if (transaction.status === "pending") {
-        transaction.status = "success";
-        transaction.paidAt = new Date();
-        await transaction.save();
-
-        const user = await User.findById(transaction.userId);
+    if (status === "success") {
+      const tx = await Transaction.findOne({ paystackRef: reference, userId: req.user!._id });
+      if (tx && tx.status === "pending") {
+        tx.status = "success";
+        await tx.save();
+        const user = await User.findById(req.user!._id);
         if (user) {
-          user.txCoins += transaction.txAmount;
+          user.txCoins += tx.txAmount;
           await user.save();
-          notifyOwner(`Payment Confirmed (Webhook)\n\nUser: ${user.email}\nAmount: ${transaction.txAmount} SQ\nRef: ${reference || order_id}`).catch(() => {});
+          await notifyOwner(`💰 *Payment Received*\n\nUser: \`${user.email}\`\nAmount: ${tx.txAmount} SQ (TSh ${tx.ksAmount})\nMethod: Mobile Money\nRef: \`${reference}\``).catch(() => {});
         }
+        res.json({ status: "success", txAmount: tx.txAmount });
+        return;
       }
-    } else if (status === "failed" || status === "cancelled") {
-      if (transaction.status === "pending") {
-        transaction.status = "failed";
-        transaction.error = status;
-        await transaction.save();
-        await recordPaymentFailure(transaction.userId.toString());
+      if (tx && tx.status === "success") { 
+        res.json({ status: "success", txAmount: tx.txAmount }); 
+        return; 
       }
     }
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error("Webhook Error:", error);
-    res.status(500).json({ error: "Webhook processing failed" });
+    if (["failed", "abandoned", "cancelled", "reversed"].includes(status)) {
+      const tx = await Transaction.findOne({ paystackRef: reference, userId: req.user!._id });
+      if (tx && tx.status === "pending") {
+        tx.status = "failed";
+        await tx.save();
+        await recordPaymentFailure(req.user!._id.toString());
+      }
+      res.json({ status });
+      return;
+    }
+    res.json({ status });
+  } catch {
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// ===== PAYMENT HISTORY =====
+// ============================================
+// WEBHOOK
+// ============================================
+router.post("/webhook", paystackWebhookHandler);
+
+// ============================================
+// CALLBACK
+// ============================================
+router.get("/callback", async (req, res) => {
+  try {
+    const reference = typeof req.query.reference === "string" ? req.query.reference : "";
+    if (!reference) { 
+      res.redirect("/topup?status=failed"); 
+      return; 
+    }
+    const tx = await Transaction.findOne({ paystackRef: reference });
+    if (!tx) { 
+      res.redirect("/topup?status=failed"); 
+      return; 
+    }
+    if (tx.status === "pending") {
+      const result = await verifyTransaction(reference);
+      if (result.success) {
+        tx.status = "success";
+        await tx.save();
+        const user = await User.findById(tx.userId);
+        if (user) {
+          user.txCoins += tx.txAmount;
+          await user.save();
+          await notifyOwner(`💰 *Payment Confirmed (Callback)*\n\nUser: \`${user.email}\`\nAmount: ${tx.txAmount} SQ (TSh ${tx.ksAmount})\nRef: \`${reference}\``).catch(() => {});
+        }
+      } else {
+        tx.status = "failed";
+        await tx.save();
+        await recordPaymentFailure(tx.userId.toString());
+      }
+    }
+    res.redirect(`/topup?status=${tx.status === "success" ? "success" : "failed"}&ref=${reference}`);
+  } catch {
+    res.redirect("/topup?status=failed");
+  }
+});
+
+// ============================================
+// VERIFY
+// ============================================
+router.get("/verify/:reference", authGuard, banCheck, async (req: AuthRequest, res) => {
+  try {
+    const reference = getParam(req.params.reference);
+    const tx = await Transaction.findOne({ paystackRef: reference, userId: req.user!._id });
+    if (!tx) { 
+      res.status(404).json({ error: "Transaction not found" }); 
+      return; 
+    }
+    if (tx.status === "success") { 
+      res.json({ status: "success", txAmount: tx.txAmount }); 
+      return; 
+    }
+    if (tx.status === "failed") { 
+      res.json({ status: "failed", txAmount: tx.txAmount }); 
+      return; 
+    }
+    const result = await verifyTransaction(reference);
+    if (result.success) {
+      tx.status = "success";
+      await tx.save();
+      const user = await User.findById(tx.userId);
+      if (user) {
+        user.txCoins += tx.txAmount;
+        await user.save();
+        await notifyOwner(`💰 *Payment Verified*\n\nUser: \`${user.email}\`\nAmount: ${tx.txAmount} SQ (TSh ${tx.ksAmount})\nRef: \`${reference}\``).catch(() => {});
+      }
+      res.json({ status: "success", txAmount: tx.txAmount });
+    } else {
+      res.json({ status: "pending", txAmount: tx.txAmount });
+    }
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ============================================
+// HISTORY
+// ============================================
 router.get("/history", authGuard, banCheck, async (req: AuthRequest, res) => {
   try {
-    const transactions = await Transaction.find({ userId: req.user!._id })
-      .sort({ createdAt: -1 })
-      .lean();
+    const transactions = await Transaction.find({ userId: req.user!._id }).sort({ createdAt: -1 }).lean();
     res.json(transactions);
   } catch {
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// ===== CUSTOM PAYMENT =====
+const TX_RATE_TSH = 1000; // 1 SQ = 1000 TSh
+
+// ============================================
+// INITIATE CUSTOM
+// ============================================
 router.post("/initiate-custom", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
   try {
-    const schema = z.object({
-      txAmount: z.number().min(3),
-      ksAmount: z.number().min(15).optional()
+    const schema = z.object({ 
+      txAmount: z.number().min(1), 
+      ksAmount: z.number().min(1000).optional() 
     });
     const parsed = schema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid input" });
-      return;
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
     }
-
     const { txAmount } = parsed.data;
-    const ksAmount = parsed.data.ksAmount ?? txAmount * TX_RATE_TSh;
+    const ksAmount = parsed.data.ksAmount ?? txAmount * TX_RATE_TSH;
     const user = await User.findById(req.user!._id);
-    if (!user) { res.status(404).json({ error: "User not found" }); return; }
-
-    const reference = `CUST_${Date.now()}_${user._id.toString().slice(-6)}`;
-    
-    await Transaction.create({
-      userId: user._id,
-      type: "topup",
-      txAmount,
-      ksAmount,
-      status: "pending",
-      paymentMethod: "custom",
-      paymentType: "local",
-      paystackRef: reference,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    });
-
-    try {
-      const response = await axios.post(
-        `${TIGERPAY_API}/create_order.php`,
-        {
-          amount: ksAmount,
-          buyer_phone: req.body.phone || "255700000000",
-          buyer_name: user.username || 'Customer',
-          buyer_email: user.email || 'customer@email.com'
-        },
-        {
-          headers: {
-            'X-API-KEY': TIGERPAY_PUBLIC_KEY,
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000
-        }
-      );
-
-      const data = response.data;
-      if (data.status === 'success') {
-        await Transaction.findOneAndUpdate(
-          { paystackRef: reference },
-          { orderId: data.order_id, tigerpayRef: data.reference }
-        );
-        res.json({
-          reference: data.reference,
-          orderId: data.order_id,
-          message: "Check your phone for the payment prompt."
-        });
-      } else {
-        throw new Error(data.message || "TigerPay initiation failed");
-      }
-    } catch (apiError) {
-      await Transaction.findOneAndUpdate(
-        { paystackRef: reference },
-        { status: "failed", error: "TigerPay API error" }
-      );
-      res.status(500).json({ error: "Payment gateway error" });
+    if (!user) { 
+      res.status(404).json({ error: "User not found" }); 
+      return; 
     }
-  } catch (error) {
-    console.error("Custom Initiate Error:", error);
+    const reference = `TXCUST_${Date.now()}_${user._id.toString().slice(-6)}`;
+    const result = await initializeTransaction(user.email, ksAmount, reference, { 
+      userId: user._id.toString(), 
+      txAmount 
+    });
+    if (!result.success) { 
+      res.status(500).json({ error: "Failed to initialize payment" }); 
+      return; 
+    }
+    await Transaction.create({ 
+      userId: user._id, 
+      type: "topup", 
+      txAmount, 
+      ksAmount, 
+      paystackRef: reference, 
+      status: "pending" 
+    });
+    res.json({ 
+      authorizationUrl: result.authorizationUrl, 
+      accessCode: result.accessCode, 
+      reference 
+    });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ============================================
+// PREPARE CARD
+// ============================================
+router.post("/prepare-card", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
+  try {
+    const schema = z.object({ packageId: z.string() });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
+    }
+    const pkg = await Package.findById(parsed.data.packageId);
+    if (!pkg) { 
+      res.status(404).json({ error: "Package not found" }); 
+      return; 
+    }
+    const user = await User.findById(req.user!._id);
+    if (!user) { 
+      res.status(404).json({ error: "User not found" }); 
+      return; 
+    }
+    const reference = `TXCARD_${Date.now()}_${user._id.toString().slice(-6)}`;
+    await Transaction.create({ 
+      userId: user._id, 
+      type: "topup", 
+      txAmount: (pkg as any).txAmount + (pkg as any).bonusTx, 
+      ksAmount: (pkg as any).ksPrice, 
+      paystackRef: reference, 
+      status: "pending" 
+    });
+    res.json({ reference });
+  } catch {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/prepare-card-custom", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
+  try {
+    const schema = z.object({ 
+      txAmount: z.number().min(1), 
+      ksAmount: z.number().min(1000).optional() 
+    });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) { 
+      res.status(400).json({ error: "Invalid input" }); 
+      return; 
+    }
+    const { txAmount } = parsed.data;
+    const ksAmount = parsed.data.ksAmount ?? txAmount * TX_RATE_TSH;
+    const user = await User.findById(req.user!._id);
+    if (!user) { 
+      res.status(404).json({ error: "User not found" }); 
+      return; 
+    }
+    const reference = `TXCCARD_${Date.now()}_${user._id.toString().slice(-6)}`;
+    await Transaction.create({ 
+      userId: user._id, 
+      type: "topup", 
+      txAmount, 
+      ksAmount, 
+      paystackRef: reference, 
+      status: "pending" 
+    });
+    res.json({ reference });
+  } catch {
     res.status(500).json({ error: "Server error" });
   }
 });
