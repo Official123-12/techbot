@@ -30,7 +30,7 @@ const NETWORKS: { key: Network; label: string; color: string; prefix: string }[]
   { key: "halotel", label: "Halotel", color: "text-yellow-400", prefix: "255" },
 ];
 
-// ===== FIXED: user parameter imeondolewa =====
+// ===== FIXED: No 'user' parameter =====
 function NetworkLogo({ network }: { network: Network }) {
   const icons: Record<Network, string> = {
     vodacom: "V",
@@ -51,7 +51,7 @@ function NetworkLogo({ network }: { network: Network }) {
   );
 }
 
-// ===== TIGERPAY MODAL (TANZANIA - AUTOMATIC) =====
+// ===== TIGERPAY MODAL (TANZANIA) =====
 function TigerPayModal({ isOpen, onClose, pkg, user, onSuccess }: { 
   isOpen: boolean; 
   onClose: () => void; 
@@ -151,9 +151,7 @@ function TigerPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
             <p className="font-semibold text-lg text-green-400">Payment Confirmed!</p>
             <p className="text-sm text-muted-foreground mt-1">{totalTx} SQ added.</p>
           </div>
-          <button onClick={onClose} className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-            Done
-          </button>
+          <button onClick={onClose} className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">Done</button>
         </div>
       ) : stage === "failed" ? (
         <div className="flex flex-col items-center gap-4 py-6">
@@ -171,9 +169,7 @@ function TigerPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
               className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
               Try Again
             </button>
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">
-              Close
-            </button>
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">Close</button>
           </div>
         </div>
       ) : stage === "pending" ? (
@@ -243,7 +239,7 @@ function TigerPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
   );
 }
 
-// ===== MIN PAY MODAL (INTERNATIONAL - MANUAL) =====
+// ===== MIN PAY MODAL (INTERNATIONAL) =====
 function MinPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
   isOpen: boolean;
   onClose: () => void;
@@ -320,7 +316,7 @@ function MinPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
               Send TSh {pkg.ksPrice} to <span className="font-mono font-bold">{ADMIN_NAME} - {ADMIN_PHONE}</span>
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              Include your username <span className="font-mono">@{user?.username}</span> in the payment description.
+              Include your username <span className="font-mono">@{user?.username}</span>
             </p>
             <p className="text-xs text-muted-foreground mt-1">Admin will confirm within 5-10 minutes.</p>
           </div>
@@ -333,9 +329,7 @@ function MinPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
             </svg>
             Contact Admin on WhatsApp
           </button>
-          <button onClick={onClose} className="w-full py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">
-            Close
-          </button>
+          <button onClick={onClose} className="w-full py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-muted transition-colors">Close</button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -356,30 +350,27 @@ function MinPayModal({ isOpen, onClose, pkg, user, onSuccess }: {
               </li>
               <li className="flex items-center gap-2 pl-4">
                 <span className="font-mono font-bold text-blue-300">{ADMIN_NAME} - {ADMIN_PHONE}</span>
-                <button
-                  onClick={handleCopy}
-                  className="p-1 rounded hover:bg-blue-500/20 transition-colors"
-                >
+                <button onClick={handleCopy} className="p-1 rounded hover:bg-blue-500/20 transition-colors">
                   {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">2.</span>
-                <span>Include your username <span className="font-mono">@{user?.username}</span> in description</span>
+                <span>Include your username <span className="font-mono">@{user?.username}</span></span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">3.</span>
-                <span>Click WhatsApp button below and send screenshot</span>
+                <span>Click WhatsApp button and send screenshot</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">4.</span>
-                <span>Admin confirms and adds SQ to your account</span>
+                <span>Admin confirms and adds SQ</span>
               </li>
             </ol>
           </div>
 
           <div>
-            <label className="text-sm font-medium block mb-1.5">Email (for receipt)</label>
+            <label className="text-sm font-medium block mb-1.5">Email</label>
             <input
               type="email"
               placeholder="your@email.com"
@@ -533,10 +524,7 @@ export default function TopUp() {
                   <p className="font-semibold">Custom Amount</p>
                   <p className="text-sm text-muted-foreground">Choose exactly how many SQ you need</p>
                 </div>
-                <button 
-                  onClick={() => {}}
-                  className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium transition-colors border border-border"
-                >
+                <button onClick={() => {}} className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-sm font-medium transition-colors border border-border">
                   Custom
                 </button>
               </div>
