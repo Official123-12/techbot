@@ -57,7 +57,7 @@ export function Login() {
           <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
             <AppLogoIcon className="w-6 h-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Stany Host</CardTitle>
           <CardDescription>Login to manage your bots</CardDescription>
         </CardHeader>
         <CardContent>
