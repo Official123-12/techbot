@@ -33,7 +33,7 @@ import {
   Users, Bot, Coins, CreditCard, ShoppingBag,
   Ban, CheckCircle, Loader2, RefreshCw, Trash2, ArrowLeft,
   Play, Square, RotateCcw, Plus, Gift, UsersRound, Crown,
-  Menu, LayoutDashboard, Search, Settings2, Minus,
+  Menu, X, LayoutDashboard, Search, Settings2, Minus,
   AlertCircle, ChevronDown, ChevronUp, Power, PowerOff, Database, FileText, Server,
   Youtube, Clock
 } from "lucide-react";
