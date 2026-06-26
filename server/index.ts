@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import cors from "cors";
 import authRouter from "./routes/auth.js";
 import botRouter from "./routes/bots.js";
-import paymentsRouter from "./routes/payments.js";
+import paymentsRouter, { paystackWebhookHandler } from "./routes/payments.js";
 import panelsRouter from "./routes/panels.js";
 import adminRouter from "./routes/admin.js";
 import couponRouter from "./routes/coupons.js";
@@ -31,57 +31,9 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: FRONTEND_ORIGIN || true, credentials: true }));
 
-// ===== WEBHOOK - TigerPay =====
-// IMPORTANT: This must be BEFORE express.json() for raw body verification
-app.post("/webhooks/tigerpay", express.raw({ type: 'application/json' }), async (req, res) => {
-  try {
-    const body = req.body;
-    const { order_id, reference, status, amount, buyer_phone } = body;
-    
-    // Find transaction by order_id
-    const Transaction = (await import("./models/Transaction.js")).Transaction;
-    const User = (await import("./models/User.js")).User;
-    
-    const transaction = await Transaction.findOne({ orderId: order_id });
+// Webhook kwa TigerPay (badala ya Paystack)
+app.post("/webhook", paystackWebhookHandler);
 
-    if (!transaction) {
-      logger.warn({ order_id }, "Webhook: Transaction not found");
-      return res.status(404).json({ error: "Transaction not found" });
-    }
-
-    if (status === "success" || status === "completed") {
-      if (transaction.status === "pending") {
-        transaction.status = "success";
-        transaction.paidAt = new Date();
-        await transaction.save();
-
-        const user = await User.findById(transaction.userId);
-        if (user) {
-          user.txCoins += transaction.txAmount;
-          await user.save();
-          logger.info({ userId: user._id, amount: transaction.txAmount }, "Payment confirmed via webhook");
-          // Notify owner
-          const { notifyOwner } = await import("./services/notify.js");
-          notifyOwner(`Payment Confirmed (Webhook)\n\nUser: ${user.email}\nAmount: ${transaction.txAmount} SQ\nRef: ${reference || order_id}`).catch(() => {});
-        }
-      }
-    } else if (status === "failed" || status === "cancelled") {
-      if (transaction.status === "pending") {
-        transaction.status = "failed";
-        transaction.error = status;
-        await transaction.save();
-        logger.warn({ order_id, status }, "Payment failed via webhook");
-      }
-    }
-
-    res.json({ success: true });
-  } catch (error) {
-    logger.error({ error }, "Webhook error");
-    res.status(500).json({ error: "Webhook processing failed" });
-  }
-});
-
-// ===== ROUTES =====
 app.use("/api/auth", authRouter);
 app.use("/api/bots", botRouter);
 app.use("/api/payments", paymentsRouter);
@@ -91,7 +43,6 @@ app.use("/api/coupons", couponRouter);
 app.use("/api/bot-templates", botTemplatesRouter);
 app.use("/api/tutorials", tutorialsRouter);
 
-// ===== CRAWLER HANDLING =====
 const CRAWLER_RE = /whatsapp|facebookexternalhit|twitterbot|telegrambot|linkedinbot|slackbot|discord|googlebot|bingbot|curl|wget|python-requests/i;
 
 app.get(["/services/bots/:slug", "/services/bots/:slug/*"], async (req, res, next) => {
@@ -100,12 +51,12 @@ app.get(["/services/bots/:slug", "/services/bots/:slug/*"], async (req, res, nex
   try {
     const template = await BotTemplate.findOne({ shareableSlug: req.params.slug, active: true }).lean();
     if (!template) { next(); return; }
-    const name = (template as unknown as { name?: string }).name || "Stany Bot";
+    const name = (template as unknown as { name?: string }).name || "MDINYANE Bot";
     const imageUrl = (template as unknown as { imageUrl?: string }).imageUrl || "https://i.imgur.com/8kQmQKq.png";
-    const host = req.get("host") || "stanyhost.herokuapp.com";
+    const host = req.get("host") || "hosting.stany.site";
     const url = `https://${host}/services/bots/${req.params.slug}`;
-    const title = `${name} — Deploy on Stany Host`;
-    const desc = `Deploy ${name} bot instantly on Stany Host. Fast, reliable WhatsApp bot hosting in seconds.`;
+    const title = `${name} — Deploy on STANY Host`;
+    const desc = `Deploy ${name} bot instantly on STANY Host. Fast, reliable WhatsApp bot hosting in Tanzania.`;
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.send(`<!DOCTYPE html><html lang="en"><head>
   <meta charset="UTF-8"/>
@@ -127,12 +78,10 @@ app.get(["/services/bots/:slug", "/services/bots/:slug/*"], async (req, res, nex
   } catch { next(); }
 });
 
-// ===== STATIC FILES =====
 const distPath = path.join(__dirname, "../dist");
 app.use(express.static(distPath));
 app.get(/.*/, (_req, res) => { res.sendFile(path.join(distPath, "index.html")); });
 
-// ===== DATABASE FUNCTIONS =====
 async function dropStaleIndexes() {
   const db = mongoose.connection.db;
   if (!db) return;
@@ -152,15 +101,15 @@ async function seedDefaultTemplate() {
     const count = await BotTemplate.countDocuments({ isDefault: true });
     if (count > 0) return;
     await BotTemplate.create({
-      name: "Stany-MD",
-      githubRepo: "stanytz/Stany-MD",
-      sessionIdUrl: "https://session-id-generator-4xuy.onrender.com/pair",
+      name: "MDINYANE",
+      githubRepo: "Stanytz378/mdinyane",
+      sessionIdUrl: "https://hosting.stany.site/pairing",
       costTx: 0,
       isDefault: true,
       active: true,
-      shareableSlug: "stany-md"
+      shareableSlug: "mdinyane"
     });
-    logger.info("Seeded default Stany-MD bot template");
+    logger.info("Seeded default MDINYANE bot template");
   } catch (err) {
     logger.error({ err }, "Failed to seed default template");
   }
@@ -174,8 +123,8 @@ async function seedPanelPlans() {
       {
         name: "Mini 400MB",
         description: "400MB RAM · ~4GB Disk · 1 Allocation · 1 Database",
-        txCost: 5,
-        originalTxCost: 8,
+        txCost: 5000, // TSH
+        originalTxCost: 8000,
         ram: "400 MB",
         disk: "~4 GB",
         cpu: "100%",
@@ -186,8 +135,8 @@ async function seedPanelPlans() {
       {
         name: "Basic 800MB",
         description: "800MB RAM · ~8GB Disk · 2 Allocations · 2 Databases",
-        txCost: 10,
-        originalTxCost: 16,
+        txCost: 10000, // TSH
+        originalTxCost: 16000,
         ram: "800 MB",
         disk: "~8 GB",
         cpu: "100%",
@@ -198,8 +147,8 @@ async function seedPanelPlans() {
       {
         name: "Unlimited",
         description: "Unlimited RAM · Unlimited Disk · 100 Allocations · 10 Databases",
-        txCost: 12,
-        originalTxCost: 20,
+        txCost: 12000, // TSH
+        originalTxCost: 20000,
         ram: "∞ Unlimited",
         disk: "∞ Unlimited",
         cpu: "100%",
@@ -208,7 +157,7 @@ async function seedPanelPlans() {
         order: 2
       }
     ]);
-    logger.info("Seeded default panel plans");
+    logger.info("Seeded default panel plans with TSH pricing");
   } catch (err) {
     logger.error({ err }, "Failed to seed panel plans");
   }
@@ -265,7 +214,7 @@ async function fixBotTemplateImages() {
   try {
     const result = await BotTemplate.updateMany(
       { $or: [{ imageUrl: { $exists: false } }, { imageUrl: "" }, { imageUrl: null }] },
-      { $set: { imageUrl: "https://raw.githubusercontent.com/stanytz/Stany-Hosting/main/public/logo.png" } }
+      { $set: { imageUrl: "https://raw.githubusercontent.com/Stanytz378/mdinyane/main/assets/stany.png" } }
     );
     if (result.modifiedCount > 0) logger.info(`Fixed ${result.modifiedCount} bot template(s) with missing imageUrl`);
   } catch (err) {
@@ -273,7 +222,6 @@ async function fixBotTemplateImages() {
   }
 }
 
-// ===== START SERVER =====
 mongoose
   .connect(MONGO_URI)
   .then(async () => {
@@ -284,7 +232,7 @@ mongoose
     await fixBotTemplateImages();
     await seedDefaultTemplate();
     await seedPanelPlans();
-    app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+    app.listen(PORT, () => logger.info(`🚀 STANY Server running on port ${PORT}`));
     startBot();
   })
   .catch(err => {
