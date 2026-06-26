@@ -12,15 +12,15 @@ import { notifyOwner } from "../services/notify.js";
 
 const router = Router();
 
-// ===== TIGERPAY CONFIG =====
+// TigerPay Config
 const TIGERPAY_API = process.env.TIGERPAY_API_URL || 'https://www.tigerpaypro.com/api/v1';
 const TIGERPAY_PUBLIC_KEY = process.env.TIGERPAY_PUBLIC_KEY || '';
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '255787069580';
 const ADMIN_NAME = process.env.ADMIN_NAME || 'Stanley';
-const TX_RATE_KES = 5;
+const TX_RATE_TSh = 50;
 const MAX_DAILY_FAILURES = 7;
 
-// ===== HELPERS =====
+// Helpers
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -50,15 +50,15 @@ async function notifyAdmin(data: any) {
       const message = `
 🔔 *${data.title || 'New Min Pay Request'}*
 
-👤 User: @${data.username || 'N/A'}
-📧 Email: ${data.email || 'N/A'}
-💰 Amount: ${data.ksAmount || 0} TSh
-🪙 SQ Coins: ${data.txAmount || 0} SQ
+User: @${data.username || 'N/A'}
+Email: ${data.email || 'N/A'}
+Amount: ${data.ksAmount || 0} TSh
+SQ Coins: ${data.txAmount || 0} SQ
 
-📱 *Send payment to:*
+Send payment to:
 ${data.adminName || ADMIN_NAME} - ${data.adminPhone || ADMIN_PHONE}
 
-📸 After payment, take screenshot and confirm.
+After payment, take screenshot and confirm.
       `;
       
       await axios.post(
@@ -75,7 +75,7 @@ ${data.adminName || ADMIN_NAME} - ${data.adminPhone || ADMIN_PHONE}
   }
 }
 
-// ===== GET PACKAGES =====
+// GET PACKAGES
 router.get("/packages", async (_req, res) => {
   try {
     const packages = await Package.find({ active: true }).sort({ order: 1 }).lean();
@@ -85,7 +85,7 @@ router.get("/packages", async (_req, res) => {
   }
 });
 
-// ===== TIGERPAY PAYMENT (TANZANIA - AUTOMATIC) =====
+// TIGERPAY PAYMENT (TANZANIA - AUTOMATIC)
 router.post("/tigerpay/initiate", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
   try {
     const schema = z.object({
@@ -109,7 +109,6 @@ router.post("/tigerpay/initiate", authGuard, banCheck, paymentRateLimit, async (
     const finalTxAmount = isCustom ? (txAmount || 0) : 0;
     const finalPackageId = packageId || null;
 
-    // Create transaction
     const reference = `TXP_${Date.now()}_${user._id.toString().slice(-6)}`;
     const transaction = await Transaction.create({
       userId: user._id,
@@ -124,7 +123,6 @@ router.post("/tigerpay/initiate", authGuard, banCheck, paymentRateLimit, async (
       tigerpayRef: reference
     });
 
-    // Call TigerPayPro API
     try {
       const response = await axios.post(
         `${TIGERPAY_API}/create_order.php`,
@@ -181,7 +179,7 @@ router.post("/tigerpay/initiate", authGuard, banCheck, paymentRateLimit, async (
   }
 });
 
-// ===== TIGERPAY - CHECK STATUS =====
+// TIGERPAY - CHECK STATUS
 router.get("/tigerpay/status/:reference", authGuard, banCheck, async (req: AuthRequest, res) => {
   try {
     const reference = req.params.reference;
@@ -203,7 +201,6 @@ router.get("/tigerpay/status/:reference", authGuard, banCheck, async (req: AuthR
       return res.json({ status: "failed" });
     }
 
-    // Check with TigerPay
     try {
       const response = await axios.post(
         `${TIGERPAY_API}/order_status.php`,
@@ -224,12 +221,11 @@ router.get("/tigerpay/status/:reference", authGuard, banCheck, async (req: AuthR
         transaction.paidAt = data.paid_at ? new Date(data.paid_at) : new Date();
         await transaction.save();
 
-        // Add SQ to user
         const user = await User.findById(transaction.userId);
         if (user) {
           user.txCoins += transaction.txAmount;
           await user.save();
-          await notifyOwner(`💰 *Payment Confirmed (TigerPay)*\n\nUser: \`${user.email}\`\nAmount: ${transaction.txAmount} SQ\nRef: \`${reference}\``).catch(() => {});
+          await notifyOwner(`Payment Confirmed (TigerPay)\n\nUser: ${user.email}\nAmount: ${transaction.txAmount} SQ\nRef: ${reference}`).catch(() => {});
         }
 
         res.json({
@@ -256,7 +252,7 @@ router.get("/tigerpay/status/:reference", authGuard, banCheck, async (req: AuthR
   }
 });
 
-// ===== MIN PAY (INTERNATIONAL - MANUAL) =====
+// MIN PAY (INTERNATIONAL - MANUAL)
 router.post("/minpay/request", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
   try {
     const schema = z.object({
@@ -276,7 +272,6 @@ router.post("/minpay/request", authGuard, banCheck, paymentRateLimit, async (req
     const user = await User.findById(req.user!._id);
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
-    // Create min pay request
     const minPayRequest = {
       userId: user._id,
       username: username || user.username,
@@ -294,7 +289,6 @@ router.post("/minpay/request", authGuard, banCheck, paymentRateLimit, async (req
     const result = await (global.db as any).collection('minpay_requests').insertOne(minPayRequest);
     const requestId = result.insertedId.toString();
 
-    // Create pending transaction
     const reference = `MIN_${Date.now()}_${user._id.toString().slice(-6)}`;
     await Transaction.create({
       userId: user._id,
@@ -311,9 +305,8 @@ router.post("/minpay/request", authGuard, banCheck, paymentRateLimit, async (req
       updatedAt: new Date()
     });
 
-    // Notify admin
     await notifyAdmin({
-      title: '📱 *New Min Pay Request (International)*',
+      title: 'New Min Pay Request (International)',
       username: username || user.username,
       email: email || user.email,
       ksAmount,
@@ -335,10 +328,9 @@ router.post("/minpay/request", authGuard, banCheck, paymentRateLimit, async (req
   }
 });
 
-// ===== MIN PAY - ADMIN CONFIRM =====
+// MIN PAY - ADMIN CONFIRM
 router.post("/minpay/confirm/:requestId", authGuard, banCheck, async (req: AuthRequest, res) => {
   try {
-    // Admin only
     if (!req.user?.isAdmin) {
       return res.status(403).json({ error: "Unauthorized" });
     }
@@ -356,7 +348,6 @@ router.post("/minpay/confirm/:requestId", authGuard, banCheck, async (req: AuthR
       return res.status(400).json({ error: "Request already processed" });
     }
 
-    // Update request
     await (global.db as any).collection('minpay_requests').updateOne(
       { _id: new ObjectId(requestId) },
       { 
@@ -369,19 +360,17 @@ router.post("/minpay/confirm/:requestId", authGuard, banCheck, async (req: AuthR
       }
     );
 
-    // Update transaction
     const transaction = await Transaction.findOne({ minPayRequestId: requestId });
     if (transaction) {
       transaction.status = "success";
       transaction.paidAt = new Date();
       await transaction.save();
 
-      // Add SQ to user
       const user = await User.findById(request.userId);
       if (user) {
         user.txCoins += request.txAmount;
         await user.save();
-        await notifyOwner(`💰 *Payment Confirmed (Min Pay)*\n\nUser: \`${user.email}\`\nAmount: ${request.txAmount} SQ\nMethod: International`).catch(() => {});
+        await notifyOwner(`Payment Confirmed (Min Pay)\n\nUser: ${user.email}\nAmount: ${request.txAmount} SQ\nMethod: International`).catch(() => {});
       }
     }
 
@@ -395,7 +384,7 @@ router.post("/minpay/confirm/:requestId", authGuard, banCheck, async (req: AuthR
   }
 });
 
-// ===== MIN PAY - REJECT REQUEST =====
+// MIN PAY - REJECT REQUEST
 router.post("/minpay/reject/:requestId", authGuard, banCheck, async (req: AuthRequest, res) => {
   try {
     if (!req.user?.isAdmin) {
@@ -443,7 +432,7 @@ router.post("/minpay/reject/:requestId", authGuard, banCheck, async (req: AuthRe
   }
 });
 
-// ===== MIN PAY - GET REQUESTS (Admin) =====
+// MIN PAY - GET REQUESTS (Admin)
 router.get("/minpay/requests", authGuard, banCheck, async (req: AuthRequest, res) => {
   try {
     if (!req.user?.isAdmin) {
@@ -462,7 +451,7 @@ router.get("/minpay/requests", authGuard, banCheck, async (req: AuthRequest, res
   }
 });
 
-// ===== WEBHOOK - TigerPayPro Callback =====
+// WEBHOOK - TigerPayPro Callback
 router.post("/webhooks/tigerpay", async (req: Request, res: Response) => {
   try {
     const { order_id, reference, status, amount, buyer_phone } = req.body;
@@ -485,7 +474,7 @@ router.post("/webhooks/tigerpay", async (req: Request, res: Response) => {
         if (user) {
           user.txCoins += transaction.txAmount;
           await user.save();
-          await notifyOwner(`💰 *Payment Confirmed (Webhook)*\n\nUser: \`${user.email}\`\nAmount: ${transaction.txAmount} SQ\nRef: \`${reference || order_id}\``).catch(() => {});
+          await notifyOwner(`Payment Confirmed (Webhook)\n\nUser: ${user.email}\nAmount: ${transaction.txAmount} SQ\nRef: ${reference || order_id}`).catch(() => {});
         }
       }
     } else if (status === "failed" || status === "cancelled") {
@@ -504,7 +493,7 @@ router.post("/webhooks/tigerpay", async (req: Request, res: Response) => {
   }
 });
 
-// ===== PAYMENT HISTORY =====
+// PAYMENT HISTORY
 router.get("/history", authGuard, banCheck, async (req: AuthRequest, res) => {
   try {
     const transactions = await Transaction.find({ userId: req.user!._id })
@@ -516,7 +505,7 @@ router.get("/history", authGuard, banCheck, async (req: AuthRequest, res) => {
   }
 });
 
-// ===== CUSTOM PAYMENT =====
+// CUSTOM PAYMENT
 router.post("/initiate-custom", authGuard, banCheck, paymentRateLimit, async (req: AuthRequest, res) => {
   try {
     const schema = z.object({
@@ -530,7 +519,7 @@ router.post("/initiate-custom", authGuard, banCheck, paymentRateLimit, async (re
     }
 
     const { txAmount } = parsed.data;
-    const ksAmount = parsed.data.ksAmount ?? txAmount * TX_RATE_KES;
+    const ksAmount = parsed.data.ksAmount ?? txAmount * TX_RATE_TSh;
     const user = await User.findById(req.user!._id);
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
@@ -549,7 +538,6 @@ router.post("/initiate-custom", authGuard, banCheck, paymentRateLimit, async (re
       updatedAt: new Date()
     });
 
-    // Send to TigerPay
     try {
       const response = await axios.post(
         `${TIGERPAY_API}/create_order.php`,
