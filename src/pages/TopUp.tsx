@@ -30,6 +30,7 @@ const NETWORKS: { key: Network; label: string; color: string; prefix: string }[]
   { key: "halotel", label: "Halotel", color: "text-yellow-400", prefix: "255" },
 ];
 
+// ===== FIXED: user parameter imeondolewa =====
 function NetworkLogo({ network }: { network: Network }) {
   const icons: Record<Network, string> = {
     vodacom: "V",
