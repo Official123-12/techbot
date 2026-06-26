@@ -97,7 +97,7 @@ export function ServicesBots() {
 
   const navItems = [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "Top Up TX", icon: CreditCard, path: "/topup" },
+    { label: "Top Up SQ", icon: CreditCard, path: "/topup" },
     { label: "Docs", icon: BookOpen, path: "/docs" },
   ];
 
@@ -121,7 +121,7 @@ export function ServicesBots() {
               </button>
               <div className="flex items-center gap-2">
                 <AnimatedLogo />
-                <span className="font-bold text-base">Toxic Host</span>
+                <span className="font-bold text-base">Stany Host</span>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -139,7 +139,7 @@ export function ServicesBots() {
       {navOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={() => setNavOpen(false)} />}
       <aside className={`fixed top-0 left-0 h-full w-72 bg-card border-r border-border z-[110] transform transition-transform duration-300 ease-out ${navOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-2.5"><AnimatedLogo /><span className="font-bold text-base">Toxic Host</span></div>
+          <div className="flex items-center gap-2.5"><AnimatedLogo /><span className="font-bold text-base">Stany Host</span></div>
           <button onClick={() => setNavOpen(false)} className="p-2 rounded-lg hover:bg-muted transition-colors"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-4 flex flex-col h-[calc(100%-65px)] overflow-y-auto">
@@ -149,7 +149,7 @@ export function ServicesBots() {
               <p className="text-sm font-semibold truncate">{user.username ? `@${user.username}` : user.email}</p>
               <div className="mt-2 flex items-center gap-1.5">
                 <Coins className="w-3.5 h-3.5 text-purple-400" />
-                <span className="text-sm font-bold text-purple-400">Balance: {user.txCoins} TX</span>
+                <span className="text-sm font-bold text-purple-400">Balance: {user.txCoins} SQ</span>
               </div>
             </div>
           )}
@@ -230,7 +230,7 @@ export function ServicesBots() {
                   <div className="flex items-center gap-1.5 mb-3">
                     <Coins className="w-3.5 h-3.5 text-purple-400" />
                     <span className="text-sm text-purple-400 font-medium">
-                      {template.isDefault ? "10 TX / month" : `${template.costTx} TX / month`}
+                      {template.isDefault ? "10 SQ / month" : `${template.costTx} SQ / month`}
                     </span>
                   </div>
                   <div className="mt-auto space-y-2">
