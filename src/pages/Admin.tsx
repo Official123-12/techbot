@@ -33,7 +33,7 @@ import {
   Users, Bot, Coins, CreditCard, ShoppingBag,
   Ban, CheckCircle, Loader2, RefreshCw, Trash2, ArrowLeft,
   Play, Square, RotateCcw, Plus, Gift, UsersRound, Crown,
-  Menu, X, LayoutDashboard, Search, Settings2, Minus,
+  Menu, LayoutDashboard, Search, Settings2, Minus,
   AlertCircle, ChevronDown, ChevronUp, Power, PowerOff, Database, FileText, Server,
   Youtube, Clock
 } from "lucide-react";
@@ -44,7 +44,7 @@ function formatDate(d: string): string {
 
 interface AdminPanel { _id: string; planName: string; panelUsername: string; panelLoginUrl: string; purchasedAt: string; ownerEmail: string; ownerUsername: string; txCost: number; }
 
-  type TabKey = "overview" | "users" | "bots" | "transactions" | "coupons" | "referrals" | "config" | "database" | "bot-templates" | "panel-plans" | "panels" | "tutorials";
+type TabKey = "overview" | "users" | "bots" | "transactions" | "coupons" | "referrals" | "config" | "database" | "bot-templates" | "panel-plans" | "panels" | "tutorials";
 
 const NAV_ITEMS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
   { key: "overview",       label: "Overview",       icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -99,22 +99,22 @@ export function Admin() {
   const [newTutorialUrl, setNewTutorialUrl] = useState("");
   const [newTutorialOrder, setNewTutorialOrder] = useState(0);
   const [tutorialLoading, setTutorialLoading] = useState(false);
-    const [deletePanelModal, setDeletePanelModal] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
+  const [deletePanelModal, setDeletePanelModal] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
   const [newTemplate, setNewTemplate] = useState({ name: "", githubRepo: "", sessionIdUrl: "", costTx: "10" });
   const [addingTemplate, setAddingTemplate] = useState(false);
   const [deleteTemplateModal, setDeleteTemplateModal] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
-  const [newPlan, setNewPlan] = useState({ name: "", description: "", sqCost: "20", ram: "512MB", disk: "2GB", cpu: "1", isBestDeal: false });
+  const [newPlan, setNewPlan] = useState({ name: "", description: "", txCost: "20", ram: "512MB", disk: "2GB", cpu: "1", isBestDeal: false });
   const [addingPlan, setAddingPlan] = useState(false);
   const [deletePlanModal, setDeletePlanModal] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
-    const [purgeModal, setPurgeModal] = useState<{ open: boolean; collection: string; label: string }>({ open: false, collection: "", label: "" });
-    const [purging, setPurging] = useState(false);
+  const [purgeModal, setPurgeModal] = useState<{ open: boolean; collection: string; label: string }>({ open: false, collection: "", label: "" });
+  const [purging, setPurging] = useState(false);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [userSearch, setUserSearch] = useState("");
-    const [botSearch, setBotSearch] = useState("");
-    const [adminLogsOpen, setAdminLogsOpen] = useState(false);
-    const [adminLogs, setAdminLogs] = useState<string[]>([]);
-    const [adminLogsBot, setAdminLogsBot] = useState<string>("");
-    const [adminLogsRefreshing, setAdminLogsRefreshing] = useState(false);
+  const [botSearch, setBotSearch] = useState("");
+  const [adminLogsOpen, setAdminLogsOpen] = useState(false);
+  const [adminLogs, setAdminLogs] = useState<string[]>([]);
+  const [adminLogsBot, setAdminLogsBot] = useState<string>("");
+  const [adminLogsRefreshing, setAdminLogsRefreshing] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
@@ -143,28 +143,28 @@ export function Admin() {
   const [confirmDeleteTutorial, setConfirmDeleteTutorial] = useState<{ open: boolean; id: string } | null>(null);
 
   const [newTeamName, setNewTeamName] = useState("");
-    const [newTeamLabel, setNewTeamLabel] = useState("");
-    const [orphanApps, setOrphanApps] = useState<string[]>([]);
-    const [orphanLoading, setOrphanLoading] = useState(false);
-    const [orphanFetched, setOrphanFetched] = useState(false);
+  const [newTeamLabel, setNewTeamLabel] = useState("");
+  const [orphanApps, setOrphanApps] = useState<string[]>([]);
+  const [orphanLoading, setOrphanLoading] = useState(false);
+  const [orphanFetched, setOrphanFetched] = useState(false);
   const [deleteTeamModal, setDeleteTeamModal] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
   const [editTeamId, setEditTeamId] = useState<string | null>(null);
   const [editTeamLabel, setEditTeamLabel] = useState("");
 
   async function handleDeleteTransaction(id: string) {
-      setLoading(l => ({ ...l, ["deleteTx_" + id]: true }));
-      try {
-        const res = await deleteAdminTransaction(id);
-        if (res.ok) {
-          setTransactions((prev: Transaction[]) => prev.filter((t: Transaction) => t._id !== id));
-          setConfirmDeleteTx(null);
-        }
-      } finally {
-        setLoading(l => ({ ...l, ["deleteTx_" + id]: false }));
+    setLoading(l => ({ ...l, ["deleteTx_" + id]: true }));
+    try {
+      const res = await deleteAdminTransaction(id);
+      if (res.ok) {
+        setTransactions((prev: Transaction[]) => prev.filter((t: Transaction) => t._id !== id));
+        setConfirmDeleteTx(null);
       }
+    } finally {
+      setLoading(l => ({ ...l, ["deleteTx_" + id]: false }));
     }
+  }
 
-      const fetchData = useCallback(async (section: string) => {
+  const fetchData = useCallback(async (section: string) => {
     setLoading(prev => ({ ...prev, [section]: true }));
     try {
       switch (section) {
@@ -175,11 +175,11 @@ export function Admin() {
         case "coupons": { const c = await getAdminCoupons(); if (Array.isArray(c)) setCoupons(c); break; }
         case "referrals": { const r = await getAdminReferrals(); if (Array.isArray(r)) setReferrals(r); break; }
         case "config": { const tm = await getAdminTeams(); if (Array.isArray(tm)) setTeams(tm); break; }
-          case "database": { const d = await getAdminDbStats(); if (d && !d.error) setDbStats(d); break; }
-          case "bot-templates": { const bt = await getBotTemplates(); if (Array.isArray(bt)) setBotTemplates(bt); break; }
-          case "panel-plans": { const pp = await getAdminPanelPlans(); if (Array.isArray(pp)) setPanelPlans(pp); break; }
-            case "panels": { const ap = await getAdminPanels(); if (Array.isArray(ap)) setAdminPanels(ap); break; }
-            case "tutorials": { const tuts = await getAdminTutorials(); if (Array.isArray(tuts)) setTutorials(tuts); break; }
+        case "database": { const d = await getAdminDbStats(); if (d && !d.error) setDbStats(d); break; }
+        case "bot-templates": { const bt = await getBotTemplates(); if (Array.isArray(bt)) setBotTemplates(bt); break; }
+        case "panel-plans": { const pp = await getAdminPanelPlans(); if (Array.isArray(pp)) setPanelPlans(pp); break; }
+        case "panels": { const ap = await getAdminPanels(); if (Array.isArray(ap)) setAdminPanels(ap); break; }
+        case "tutorials": { const tuts = await getAdminTutorials(); if (Array.isArray(tuts)) setTutorials(tuts); break; }
       }
     } catch {
       showToast(`Failed to load ${section}`, "error");
@@ -198,7 +198,7 @@ export function Admin() {
     fetchData("coupons");
     fetchData("referrals");
     fetchData("config");
-      fetchData("database");
+    fetchData("database");
   }, [user, isAdmin, navigate, fetchData]);
 
   useEffect(() => {
@@ -236,7 +236,7 @@ export function Admin() {
     const code = couponCode.trim().toUpperCase();
     const amount = parseInt(couponTx);
     if (!code || code.length < 3) { showToast("Code must be at least 3 characters", "error"); return; }
-    if (!amount || amount < 1) { showToast("TX amount must be at least 1", "error"); return; }
+    if (!amount || amount < 1) { showToast("SQ amount must be at least 1", "error"); return; }
     await handleAction("createCoupon", () => createCoupon(code, amount), () => {
       setCouponCode(""); setCouponTx(""); fetchData("coupons");
     });
@@ -250,23 +250,23 @@ export function Admin() {
     });
   };
 
-    const fetchOrphanApps = async () => {
-      setOrphanLoading(true);
-      try {
-        const data = await getOrphanHerokuApps() as { orphans?: string[] };
-        setOrphanApps(data.orphans || []);
-        setOrphanFetched(true);
-      } catch { showToast("Failed to fetch orphan apps", "error"); }
-      finally { setOrphanLoading(false); }
-    };
+  const fetchOrphanApps = async () => {
+    setOrphanLoading(true);
+    try {
+      const data = await getOrphanHerokuApps() as { orphans?: string[] };
+      setOrphanApps(data.orphans || []);
+      setOrphanFetched(true);
+    } catch { showToast("Failed to fetch orphan apps", "error"); }
+    finally { setOrphanLoading(false); }
+  };
 
-    const handleDeleteOrphan = async (appName: string) => {
-      try {
-        await deleteOrphanApp(appName);
-        setOrphanApps(prev => prev.filter(a => a !== appName));
-        showToast(`Deleted ${appName}`, "success");
-      } catch { showToast("Failed to delete app", "error"); }
-    };
+  const handleDeleteOrphan = async (appName: string) => {
+    try {
+      await deleteOrphanApp(appName);
+      setOrphanApps(prev => prev.filter(a => a !== appName));
+      showToast(`Deleted ${appName}`, "success");
+    } catch { showToast("Failed to delete app", "error"); }
+  };
 
   const handleUpdateTeamLabel = async (id: string) => {
     await handleAction("updateTeam", () => updateAdminTeam(id, editTeamLabel), () => {
@@ -416,7 +416,7 @@ export function Admin() {
               <StatCard title="Users"            value={stats?.totalUsers ?? 0}           icon={<Users className="w-5 h-5" />} />
               <StatCard title="Bots"             value={stats?.totalBots ?? 0}            icon={<Bot className="w-5 h-5" />} />
               <StatCard title="Active Bots"      value={stats?.activeBots ?? 0}           icon={<Play className="w-5 h-5" />} />
-              <StatCard title="TX Circulation"   value={stats?.totalTxInCirculation ?? 0} icon={<Coins className="w-5 h-5" />} />
+              <StatCard title="SQ Circulation"   value={stats?.totalTxInCirculation ?? 0} icon={<Coins className="w-5 h-5" />} />
               <StatCard title="Revenue (KES)"    value={stats?.totalRevenue ?? 0}         icon={<CreditCard className="w-5 h-5" />} />
               <StatCard title="Transactions"     value={stats?.totalTransactions ?? 0}    icon={<ShoppingBag className="w-5 h-5" />} />
               <StatCard title="Coupons"          value={stats?.totalCoupons ?? 0}         icon={<Gift className="w-5 h-5" />} />
@@ -516,7 +516,7 @@ export function Admin() {
                           </div>
                           <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                            <span className="text-purple-400 font-medium">{u.txCoins} TX</span>
+                            <span className="text-purple-400 font-medium">{u.txCoins} SQ</span>
                             <span>{u.botCount} bot{u.botCount !== 1 ? "s" : ""}</span>
                             <span>{formatDate(u.createdAt)}</span>
                           </div>
@@ -601,38 +601,38 @@ export function Admin() {
         )}
 
         {activeTab === "transactions" && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/10"
+                onClick={async () => {
+                  try {
+                    const r = await resolveStaleTransactions() as { resolved?: number };
+                    showToast(`Resolved ${r.resolved ?? 0} stale transactions`, "success");
+                    fetchData("transactions");
+                  } catch { showToast("Failed to resolve stale transactions", "error"); }
+                }}
+              >
+                <Clock className="w-3.5 h-3.5 mr-1.5" />
+                Resolve Stale
+              </Button>
+              {selectedTxIds.length > 0 && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-yellow-400 border-yellow-400/30 hover:bg-yellow-400/10"
+                  className="text-red-400 border-red-400/30 hover:bg-red-400/10"
                   onClick={async () => {
-                    try {
-                      const r = await resolveStaleTransactions() as { resolved?: number };
-                      showToast(`Resolved ${r.resolved ?? 0} stale transactions`, "success");
-                      fetchData("transactions");
-                    } catch { showToast("Failed to resolve stale transactions", "error"); }
+                    setConfirmBulkDeleteTx(true);
                   }}
                 >
-                  <Clock className="w-3.5 h-3.5 mr-1.5" />
-                  Resolve Stale
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Delete Selected ({selectedTxIds.length})
                 </Button>
-                {selectedTxIds.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-red-400 border-red-400/30 hover:bg-red-400/10"
-                    onClick={async () => {
-                      setConfirmBulkDeleteTx(true);
-                    }}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                    Delete Selected ({selectedTxIds.length})
-                  </Button>
-                )}
-              </div>
-              <div className="rounded-md border overflow-hidden">
+              )}
+            </div>
+            <div className="rounded-md border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[600px]">
                   <thead>
@@ -642,7 +642,7 @@ export function Admin() {
                           onChange={e => setSelectedTxIds(e.target.checked ? transactions.map((t: Transaction) => t._id) : [])} />
                       </th>
                       <th className="text-left p-3 font-medium">Type</th>
-                      <th className="text-left p-3 font-medium">TX</th>
+                      <th className="text-left p-3 font-medium">SQ</th>
                       <th className="text-left p-3 font-medium">KES</th>
                       <th className="text-left p-3 font-medium">User</th>
                       <th className="text-left p-3 font-medium">Status</th>
@@ -677,38 +677,38 @@ export function Admin() {
                             }`}>{t.status}</span>
                           </td>
                           <td className="p-3 text-muted-foreground text-xs whitespace-nowrap">{formatDate(t.createdAt)}</td>
-                            <td className="p-3">
-                              <div className="flex items-center gap-1">
-                                {(t as unknown as { userId?: string }).userId && (
-                                  <button
-                                    onClick={() => {
-                                      const u = users.find((u: AdminUser) => u._id === (t as unknown as { userId: string }).userId);
-                                      if (u) { openUserPanel(u); setBanModalOpen(true); }
-                                    }}
-                                    className="p-1.5 rounded hover:bg-red-500/10 text-red-400 transition-colors"
-                                    title="Ban User"
-                                  >
-                                    <Ban className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
+                          <td className="p-3">
+                            <div className="flex items-center gap-1">
+                              {(t as unknown as { userId?: string }).userId && (
                                 <button
-                                  onClick={() => setConfirmDeleteTx({ open: true, id: t._id })}
+                                  onClick={() => {
+                                    const u = users.find((u: AdminUser) => u._id === (t as unknown as { userId: string }).userId);
+                                    if (u) { openUserPanel(u); setBanModalOpen(true); }
+                                  }}
                                   className="p-1.5 rounded hover:bg-red-500/10 text-red-400 transition-colors"
-                                  title="Delete Transaction"
+                                  title="Ban User"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Ban className="w-3.5 h-3.5" />
                                 </button>
-                              </div>
-                            </td>
-                          </tr>
+                              )}
+                              <button
+                                onClick={() => setConfirmDeleteTx({ open: true, id: t._id })}
+                                className="p-1.5 rounded hover:bg-red-500/10 text-red-400 transition-colors"
+                                title="Delete Transaction"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
             </div>
-            </div>
-          )}
+          </div>
+        )}
 
         {activeTab === "coupons" && (
           <div className="space-y-4">
@@ -726,7 +726,7 @@ export function Admin() {
                     <Input placeholder="e.g., WELCOME2024" value={couponCode} onChange={e => setCouponCode(e.target.value.toUpperCase())} maxLength={20} />
                   </div>
                   <div>
-                    <Label>TX Amount</Label>
+                    <Label>SQ Amount</Label>
                     <Input type="number" placeholder="e.g., 10" value={couponTx} onChange={e => setCouponTx(e.target.value)} min={1} />
                   </div>
                 </div>
@@ -743,7 +743,7 @@ export function Admin() {
                   <thead>
                     <tr className="border-b bg-muted/50">
                       <th className="text-left p-3 font-medium">Code</th>
-                      <th className="text-left p-3 font-medium">TX</th>
+                      <th className="text-left p-3 font-medium">SQ</th>
                       <th className="text-left p-3 font-medium">Claimed By</th>
                       <th className="text-left p-3 font-medium">Created</th>
                       <th className="text-left p-3 font-medium"></th>
@@ -788,40 +788,40 @@ export function Admin() {
               </Button>
             </div>
             <div className="rounded-md border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[500px]">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium">Referrer</th>
-                    <th className="text-left p-3 font-medium">Referred</th>
-                    <th className="text-left p-3 font-medium">TX Rewarded</th>
-                    <th className="text-left p-3 font-medium">Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading["referrals"] ? (
-                    <tr><td colSpan={4} className="text-center py-12"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></td></tr>
-                  ) : referrals.map(r => (
-                    <tr key={r._id} className="border-b hover:bg-muted/30">
-                      <td className="p-3">
-                        <div className="font-medium text-xs">{r.referrerUsername ? `@${r.referrerUsername}` : ""}</div>
-                        <div className="text-xs text-muted-foreground">{r.referrerEmail}</div>
-                      </td>
-                      <td className="p-3">
-                        <div className="font-medium text-xs">{r.referredUsername ? `@${r.referredUsername}` : ""}</div>
-                        <div className="text-xs text-muted-foreground">{r.referredEmail}</div>
-                      </td>
-                      <td className="p-3 text-purple-400 font-medium">{r.txRewarded}</td>
-                      <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">{formatDate(r.createdAt)}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[500px]">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium">Referrer</th>
+                      <th className="text-left p-3 font-medium">Referred</th>
+                      <th className="text-left p-3 font-medium">SQ Rewarded</th>
+                      <th className="text-left p-3 font-medium">Date</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {loading["referrals"] ? (
+                      <tr><td colSpan={4} className="text-center py-12"><Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" /></td></tr>
+                    ) : referrals.map(r => (
+                      <tr key={r._id} className="border-b hover:bg-muted/30">
+                        <td className="p-3">
+                          <div className="font-medium text-xs">{r.referrerUsername ? `@${r.referrerUsername}` : ""}</div>
+                          <div className="text-xs text-muted-foreground">{r.referrerEmail}</div>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-medium text-xs">{r.referredUsername ? `@${r.referredUsername}` : ""}</div>
+                          <div className="text-xs text-muted-foreground">{r.referredEmail}</div>
+                        </td>
+                        <td className="p-3 text-purple-400 font-medium">{r.txRewarded}</td>
+                        <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">{formatDate(r.createdAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
-  
+
         {activeTab === "database" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -861,31 +861,31 @@ export function Admin() {
                   </div>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {dbStats.collections.map((col: DbCollectionStat) => (
-                  <div key={col.name} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3">
-                    <div className="flex items-start justify-between">
-                      <div className="min-w-0">
-                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide truncate">{col.label}</p>
-                        <p className="text-2xl font-bold mt-1">{col.count.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">documents</p>
+                  {dbStats.collections.map((col: DbCollectionStat) => (
+                    <div key={col.name} className="rounded-xl border border-border bg-card p-4 flex flex-col gap-3">
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0">
+                          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide truncate">{col.label}</p>
+                          <p className="text-2xl font-bold mt-1">{col.count.toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">documents</p>
+                        </div>
+                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <Database className="w-4 h-4 text-muted-foreground" />
+                        </div>
                       </div>
-                      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <Database className="w-4 h-4 text-muted-foreground" />
-                      </div>
+                      {col.canPurge && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPurgeModal({ open: true, collection: col.name, label: col.label })}
+                          className="w-full text-red-400 hover:text-red-300 hover:bg-red-400/10 border-red-400/20 hover:border-red-400/30"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                          Purge All
+                        </Button>
+                      )}
                     </div>
-                    {col.canPurge && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPurgeModal({ open: true, collection: col.name, label: col.label })}
-                        className="w-full text-red-400 hover:text-red-300 hover:bg-red-400/10 border-red-400/20 hover:border-red-400/30"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                        Purge All
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  ))}
                 </div>
               </>
             )}
@@ -951,10 +951,10 @@ export function Admin() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs mb-1.5 block">Bot Name</Label>
-                    <Input placeholder="e.g. Toxic MD" value={newTemplate.name} onChange={e => setNewTemplate(p => ({ ...p, name: e.target.value }))} />
+                    <Input placeholder="e.g., Stany MD" value={newTemplate.name} onChange={e => setNewTemplate(p => ({ ...p, name: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">Cost (TX)</Label>
+                    <Label className="text-xs mb-1.5 block">Cost (SQ)</Label>
                     <Input type="number" placeholder="10" value={newTemplate.costTx} onChange={e => setNewTemplate(p => ({ ...p, costTx: e.target.value }))} />
                   </div>
                   <div>
@@ -1008,7 +1008,7 @@ export function Admin() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">{t.githubRepo}</p>
-                      <p className="text-xs text-purple-400 mt-0.5">{t.costTx} TX/month</p>
+                      <p className="text-xs text-purple-400 mt-0.5">{t.costTx} SQ/month</p>
                     </div>
                     {!t.isDefault && (
                       <Button
@@ -1043,7 +1043,7 @@ export function Admin() {
                     <Input placeholder="e.g. Starter" value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} />
                   </div>
                   <div>
-                    <Label className="text-xs mb-1.5 block">TX Cost</Label>
+                    <Label className="text-xs mb-1.5 block">SQ Cost</Label>
                     <Input type="number" placeholder="20" value={newPlan.txCost} onChange={e => setNewPlan(p => ({ ...p, txCost: e.target.value }))} />
                   </div>
                   <div>
@@ -1106,7 +1106,7 @@ export function Admin() {
                         {p.isBestDeal && <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-purple-500/20 text-purple-400 font-semibold">Best Deal</span>}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
-                      <p className="text-xs mt-0.5">RAM: {p.ram} · Disk: {p.disk} · CPU: {p.cpu} · <span className="text-purple-400 font-medium">{p.txCost} TX</span></p>
+                      <p className="text-xs mt-0.5">RAM: {p.ram} · Disk: {p.disk} · CPU: {p.cpu} · <span className="text-purple-400 font-medium">{p.txCost} SQ</span></p>
                     </div>
                     <Button
                       variant="outline"
@@ -1124,86 +1124,86 @@ export function Admin() {
         )}
 
         {activeTab === "tutorials" && (
-            <div className="space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Youtube className="w-4 h-4 text-red-400" />
-                    Add Tutorial
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label>Title</Label>
-                      <Input placeholder="Tutorial title" value={newTutorialTitle} onChange={e => setNewTutorialTitle(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>YouTube URL</Label>
-                      <Input placeholder="https://youtu.be/..." value={newTutorialUrl} onChange={e => setNewTutorialUrl(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Order</Label>
-                      <Input type="number" min={0} value={newTutorialOrder} onChange={e => setNewTutorialOrder(Number(e.target.value))} />
-                    </div>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Youtube className="w-4 h-4 text-red-400" />
+                  Add Tutorial
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>Title</Label>
+                    <Input placeholder="Tutorial title" value={newTutorialTitle} onChange={e => setNewTutorialTitle(e.target.value)} />
                   </div>
-                  <Button
-                    size="sm"
-                    disabled={tutorialLoading || !newTutorialTitle.trim() || !newTutorialUrl.trim()}
-                    onClick={async () => {
-                      setTutorialLoading(true);
-                      try {
-                        await createAdminTutorial({ title: newTutorialTitle.trim(), youtubeUrl: newTutorialUrl.trim(), order: newTutorialOrder });
-                        showToast("Tutorial added", "success");
-                        setNewTutorialTitle(""); setNewTutorialUrl(""); setNewTutorialOrder(0);
-                        const data = await getAdminTutorials() as { _id: string; title: string; youtubeUrl: string; order: number }[];
-                        if (Array.isArray(data)) setTutorials(data);
-                      } catch { showToast("Failed to add tutorial", "error"); }
-                      finally { setTutorialLoading(false); }
-                    }}
-                  >
-                    {tutorialLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
-                    Add Tutorial
-                  </Button>
-                </CardContent>
-              </Card>
-              <div className="rounded-md border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">#</th>
-                      <th className="text-left p-3 font-medium">Title</th>
-                      <th className="text-left p-3 font-medium">URL</th>
-                      <th className="p-3"></th>
+                  <div>
+                    <Label>YouTube URL</Label>
+                    <Input placeholder="https://youtu.be/..." value={newTutorialUrl} onChange={e => setNewTutorialUrl(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Order</Label>
+                    <Input type="number" min={0} value={newTutorialOrder} onChange={e => setNewTutorialOrder(Number(e.target.value))} />
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={tutorialLoading || !newTutorialTitle.trim() || !newTutorialUrl.trim()}
+                  onClick={async () => {
+                    setTutorialLoading(true);
+                    try {
+                      await createAdminTutorial({ title: newTutorialTitle.trim(), youtubeUrl: newTutorialUrl.trim(), order: newTutorialOrder });
+                      showToast("Tutorial added", "success");
+                      setNewTutorialTitle(""); setNewTutorialUrl(""); setNewTutorialOrder(0);
+                      const data = await getAdminTutorials() as { _id: string; title: string; youtubeUrl: string; order: number }[];
+                      if (Array.isArray(data)) setTutorials(data);
+                    } catch { showToast("Failed to add tutorial", "error"); }
+                    finally { setTutorialLoading(false); }
+                  }}
+                >
+                  {tutorialLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Plus className="w-3.5 h-3.5 mr-1.5" />}
+                  Add Tutorial
+                </Button>
+              </CardContent>
+            </Card>
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">#</th>
+                    <th className="text-left p-3 font-medium">Title</th>
+                    <th className="text-left p-3 font-medium">URL</th>
+                    <th className="p-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tutorials.length === 0 ? (
+                    <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">No tutorials yet</td></tr>
+                  ) : tutorials.map(t => (
+                    <tr key={t._id} className="border-b hover:bg-muted/30">
+                      <td className="p-3 text-muted-foreground">{t.order}</td>
+                      <td className="p-3 font-medium">{t.title}</td>
+                      <td className="p-3 text-xs text-muted-foreground truncate max-w-[200px]">
+                        <a href={t.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">{t.youtubeUrl}</a>
+                      </td>
+                      <td className="p-3">
+                        <button
+                          onClick={async () => {
+                            setConfirmDeleteTutorial({ open: true, id: t._id });
+                          }}
+                          className="p-1.5 rounded hover:bg-red-500/10 text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {tutorials.length === 0 ? (
-                      <tr><td colSpan={4} className="text-center py-8 text-muted-foreground">No tutorials yet</td></tr>
-                    ) : tutorials.map(t => (
-                      <tr key={t._id} className="border-b hover:bg-muted/30">
-                        <td className="p-3 text-muted-foreground">{t.order}</td>
-                        <td className="p-3 font-medium">{t.title}</td>
-                        <td className="p-3 text-xs text-muted-foreground truncate max-w-[200px]">
-                          <a href={t.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline">{t.youtubeUrl}</a>
-                        </td>
-                        <td className="p-3">
-                          <button
-                            onClick={async () => {
-                              setConfirmDeleteTutorial({ open: true, id: t._id });
-                            }}
-                            className="p-1.5 rounded hover:bg-red-500/10 text-red-400 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
+          </div>
+        )}
 
         {activeTab === "config" && (
           <div className="space-y-4">
@@ -1218,7 +1218,7 @@ export function Admin() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label>Team Name</Label>
-                    <Input placeholder="e.g., toxicxtech254" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} />
+                    <Input placeholder="e.g., stanyhost254" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} />
                   </div>
                   <div>
                     <Label>Billing Label</Label>
@@ -1342,7 +1342,7 @@ export function Admin() {
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">{p.ownerEmail}{p.ownerUsername ? ` (@${p.ownerUsername})` : ""}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                           <span className="font-mono text-purple-400">{p.panelUsername}</span>
-                          <span>{p.txCost} TX</span>
+                          <span>{p.txCost} SQ</span>
                           <span>{formatDate(p.purchasedAt)}</span>
                         </div>
                       </div>
@@ -1383,8 +1383,8 @@ export function Admin() {
                 <span className="font-medium truncate ml-4">{selectedUser.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">TX Balance</span>
-                <span className="font-semibold text-purple-400">{selectedUser.txCoins} TX</span>
+                <span className="text-muted-foreground">SQ Balance</span>
+                <span className="font-semibold text-purple-400">{selectedUser.txCoins} SQ</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Bots</span>
@@ -1423,10 +1423,10 @@ export function Admin() {
                   )
                 )}
                 <Button variant="outline" size="sm" onClick={() => setTxModalOpen(true)}>
-                  <Plus className="w-3.5 h-3.5 mr-1" />Add TX
+                  <Plus className="w-3.5 h-3.5 mr-1" />Add SQ
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setSubtractTxModalOpen(true)}>
-                  <Minus className="w-3.5 h-3.5 mr-1" />Subtract TX
+                  <Minus className="w-3.5 h-3.5 mr-1" />Subtract SQ
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => setPwModalOpen(true)}>
                   <RefreshCw className="w-3.5 h-3.5 mr-1" />Reset PW
@@ -1468,7 +1468,7 @@ export function Admin() {
 
             {txModalOpen && (
               <div className="space-y-3 border-t border-border pt-3">
-                <p className="text-sm font-medium">Add TX to {selectedUser.username ? `@${selectedUser.username}` : selectedUser.email}</p>
+                <p className="text-sm font-medium">Add SQ to {selectedUser.username ? `@${selectedUser.username}` : selectedUser.email}</p>
                 <Input type="number" placeholder="Amount (min 1)" value={txAmount} onChange={e => setTxAmount(e.target.value)} min={1} />
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setTxModalOpen(false)}>Cancel</Button>
@@ -1477,16 +1477,16 @@ export function Admin() {
                     onClick={() => {
                       const amt = parseInt(txAmount);
                       if (!amt || amt < 1) { showToast("Enter a valid amount", "error"); return; }
-                      handleAction("Add TX", () => grantTx(selectedUser._id, amt), () => {
+                      handleAction("Add SQ", () => grantTx(selectedUser._id, amt), () => {
                         fetchData("users");
                         setSelectedUser(prev => prev ? { ...prev, txCoins: prev.txCoins + amt } : prev);
                         setTxAmount("");
                         setTxModalOpen(false);
                       });
                     }}
-                    disabled={loading["Add TX"]}
+                    disabled={loading["Add SQ"]}
                   >
-                    {loading["Add TX"] ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add TX"}
+                    {loading["Add SQ"] ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add SQ"}
                   </Button>
                 </div>
               </div>
@@ -1494,7 +1494,7 @@ export function Admin() {
 
             {subtractTxModalOpen && (
               <div className="space-y-3 border-t border-border pt-3">
-                <p className="text-sm font-medium">Subtract TX from {selectedUser.username ? `@${selectedUser.username}` : selectedUser.email}</p>
+                <p className="text-sm font-medium">Subtract SQ from {selectedUser.username ? `@${selectedUser.username}` : selectedUser.email}</p>
                 <Input type="number" placeholder="Amount (min 1)" value={subtractAmount} onChange={e => setSubtractAmount(e.target.value)} min={1} />
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setSubtractTxModalOpen(false)}>Cancel</Button>
@@ -1503,16 +1503,16 @@ export function Admin() {
                     onClick={() => {
                       const amt = parseInt(subtractAmount);
                       if (!amt || amt < 1) { showToast("Enter a valid amount", "error"); return; }
-                      handleAction("Subtract TX", () => subtractTx(selectedUser._id, amt), () => {
+                      handleAction("Subtract SQ", () => subtractTx(selectedUser._id, amt), () => {
                         fetchData("users");
                         setSelectedUser(prev => prev ? { ...prev, txCoins: Math.max(0, prev.txCoins - amt) } : prev);
                         setSubtractAmount("");
                         setSubtractTxModalOpen(false);
                       });
                     }}
-                    disabled={loading["Subtract TX"]}
+                    disabled={loading["Subtract SQ"]}
                   >
-                    {loading["Subtract TX"] ? <Loader2 className="w-4 h-4 animate-spin" /> : "Subtract TX"}
+                    {loading["Subtract SQ"] ? <Loader2 className="w-4 h-4 animate-spin" /> : "Subtract SQ"}
                   </Button>
                 </div>
               </div>
@@ -1567,14 +1567,14 @@ export function Admin() {
       </Modal>
 
       <DeleteConfirmModal
-          isOpen={!!confirmDeleteTx?.open}
-          onClose={() => setConfirmDeleteTx(null)}
-          onConfirm={() => confirmDeleteTx && handleDeleteTransaction(confirmDeleteTx.id)}
-          title="Delete Transaction"
-          description="This will permanently remove this transaction record."
-        />
-        <DeleteConfirmModal
-          isOpen={deleteCouponModal.open}
+        isOpen={!!confirmDeleteTx?.open}
+        onClose={() => setConfirmDeleteTx(null)}
+        onConfirm={() => confirmDeleteTx && handleDeleteTransaction(confirmDeleteTx.id)}
+        title="Delete Transaction"
+        description="This will permanently remove this transaction record."
+      />
+      <DeleteConfirmModal
+        isOpen={deleteCouponModal.open}
         onClose={() => setDeleteCouponModal({ open: false, id: "", code: "" })}
         onConfirm={() => handleAction("deleteCoupon", () => deleteCoupon(deleteCouponModal.id), () => { fetchData("coupons"); setDeleteCouponModal({ open: false, id: "", code: "" }); })}
         title={`Delete Coupon ${deleteCouponModal.code}?`}
